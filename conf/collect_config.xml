@@ -1,0 +1,559 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+<beans default-lazy-init="false">
+	<!-- 属性配置文件 -->
+	<bean id="propertyConfigurer"
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<!-- 使用shell脚本启动程序时,该值可能会被替换 -->
+		<property name="location" value="conf/collect.properties"/>
+	</bean>
+	<!-- FTP 传输 -->
+	<bean id="ftp" class="com.cattsoft.collect.io.file.ftp.FtpUploadTask" init-method="lanuch">
+		<constructor-arg index="0">
+			<bean class="com.cattsoft.collect.io.file.ftp.CommonFtpClient">
+				<constructor-arg index="0" value="${collect.ftp.host}"/>
+				<constructor-arg index="1" value="${collect.ftp.port}"/>
+				<property name="username" value="${collect.ftp.username}"/>
+				<property name="password" value="${collect.ftp.password}"/>
+				<property name="workdir" value="${collect.ftp.workdir}"/>
+			</bean>
+		</constructor-arg>
+		<!-- 当程序退出而FTP存在上传任务未完成时,任务将缓存到该文件 -->
+		<property name="taskpath" value="${collect.ftp.taskpath}"/>
+	</bean>
+	<!-- 文件分割配置 -->
+	<bean id="fileSpliter" class="com.cattsoft.collect.io.file.split.FileSplitter">
+		<!-- 100MB -->
+		<constructor-arg index="0" value="104857600"/>
+		<!-- 分割行标识 -->
+		<property name="splitTag" value="---end---"/>
+		<!-- 输出目录 -->
+		<property name="output" value=""/>
+		<!-- 分割后删除源数据文件 -->
+		<property name="delete" value="true"/>
+	</bean>
+	<!-- 系统命令运行状态监控 -->
+	<!-- 数据通过Socket发送到服务端,可能会受网络速率影响出现延迟 -->
+	<bean id="report_gather" class="com.cattsoft.collect.net.report.SystemReportGather">
+		<!-- 状态数据上报服务器列表 -->
+		<constructor-arg index="0">
+			<list>
+				<!-- 北京联通 -->
+                <value>202.108.49.59</value>
+                <!-- 天津联通 -->
+                <value>60.28.24.169</value>
+			</list>
+		</constructor-arg>
+		<!-- Socket数据服务端口 -->
+		<constructor-arg index="1" type="int" value="8089"/>
+		<constructor-arg index="2">
+			<list>
+				<value>/bin/sh</value>
+				<value>-c</value>
+				<!--<value>ps aux | grep $label</value>-->
+				<value>ps aux | grep netCollector | awk '{if($2==$pid)print $n}'</value>
+			</list>	
+		</constructor-arg>
+		<!-- 是否启用上报 -->
+		<property name="flag" value="${app.status.reported}"/>
+		<!-- 睡眠间隔(millis) -->
+		<property name="sleep" value="180000"/>
+		<!-- 程序线程处于闲置状态时睡眠间隔 -->
+		<property name="alternateSleep" value="600000"/>
+	</bean>
+	<!-- 系统状态上报线程 -->
+	<bean id="report_gather_thread" class="java.lang.Thread" init-method="start">
+		<constructor-arg index="0" ref="report_gather"/>
+		<property name="name" value="system_report_gather"/>
+	</bean>
+
+	<!-- dig 命令采集 -->
+	<bean id="dig_collect" class="com.cattsoft.collect.net.actuator.CommandActuator">
+		<constructor-arg index="0">
+			<!-- 线程池配置 -->
+			<bean class="java.util.concurrent.ThreadPoolExecutor">
+				<constructor-arg index="0" value="${thread.pool.min}" />
+				<constructor-arg index="1" value="${thread.pool.max}" />
+				<constructor-arg index="2" value="30" />
+				<constructor-arg index="3">
+					<bean class="java.util.concurrent.TimeUnit" factory-method="valueOf">
+						<constructor-arg index="0" value="SECONDS" />
+					</bean>
+				</constructor-arg>
+				<constructor-arg index="4">
+					<bean class="java.util.concurrent.LinkedBlockingQueue">
+						<constructor-arg index="0" value="2" />
+					</bean>
+				</constructor-arg>
+				<constructor-arg index="5">
+					<bean class="java.util.concurrent.ThreadPoolExecutor$CallerRunsPolicy"></bean>
+				</constructor-arg>
+			</bean>
+		</constructor-arg>
+		<constructor-arg index="1">
+			<list>
+				<bean class="com.cattsoft.collect.net.reader.CommandFileReader">
+					<constructor-arg index="0">
+						<list>
+							<value>dig</value>
+							<value>{}</value>
+						</list>
+					</constructor-arg>
+					<constructor-arg index="1" value="${dig.reader.path}"/>
+					<constructor-arg index="2" value="${dig.reader.skip}"/>
+					<property name="adapters">
+						<list>
+							<!-- 添加URL处理适配 -->
+							<bean class="com.cattsoft.collect.net.adapter.UrlAdapter"/>
+						</list>
+					</property>
+				</bean>
+			</list>
+		</constructor-arg>
+		<!-- 数据公共适配器 -->
+		<property name="adapters">
+			<list>
+				<bean class="com.cattsoft.collect.net.adapter.BasicResultAdaptor">
+					<constructor-arg index="0" value="{result}"/>
+				</bean>
+			</list>
+		</property>
+		<!-- 事件监听器 -->
+		<property name="listeners">
+			<list>
+				<!-- 响应数据写入监听器 -->
+				<bean class="com.cattsoft.collect.net.writer.BufferedWriterListener">
+					<constructor-arg index="0" value="${dig.result.path}"/>
+					<constructor-arg index="1" value="${dig.result.expression}"/>
+					<!-- 是否通过FTP上传 -->
+					<property name="transfer" value="${dig.result.transfer}"/>
+					<!-- 数据文件分割配置 -->
+					<property name="spliter" ref="fileSpliter"/>
+				</bean>
+				<!-- 命令执行进度写入监听器 -->
+				<bean class="com.cattsoft.collect.net.writer.ProgressWriterListener">
+					<constructor-arg index="0" value="${dig.reader.skip}"/>
+					<property name="frequencyDelete" value="true"/>
+					<!-- 自动周期任务调度时需要设置进行删除 -->
+					<property name="deleted" value="true"/>
+				</bean>
+			</list>
+		</property>
+		<!-- 命令执行器是否启用 -->
+		<property name="enabled" value="${dig.actuator.enabled}"/>
+		<!-- ftp传输配置 -->
+		<property name="ftp" ref="ftp"/>
+		<!-- 命令运行状态报告 -->
+		<property name="report" ref="report_gather"/>
+		<property name="directory" value="${dig.cmd.directory}"/>
+		<!-- 设置命令执行超时时长(秒,可指定timeunit进行设置) -->
+		<property name="timeout" value="30"/>
+	</bean>
+
+	<!-- dig+trace 命令采集 -->
+	<bean id="dig_trace_collect" class="com.cattsoft.collect.net.actuator.CommandActuator">
+		<constructor-arg index="0">
+			<!-- 线程池配置 -->
+			<bean class="java.util.concurrent.ThreadPoolExecutor">
+				<constructor-arg index="0" value="${thread.pool.min}" />
+				<constructor-arg index="1" value="${thread.pool.max}" />
+				<constructor-arg index="2" value="30" />
+				<constructor-arg index="3">
+					<bean class="java.util.concurrent.TimeUnit" factory-method="valueOf">
+						<constructor-arg index="0" value="SECONDS" />
+					</bean>
+				</constructor-arg>
+				<constructor-arg index="4">
+					<bean class="java.util.concurrent.LinkedBlockingQueue">
+						<constructor-arg index="0" value="2" />
+					</bean>
+				</constructor-arg>
+				<constructor-arg index="5">
+					<bean class="java.util.concurrent.ThreadPoolExecutor$CallerRunsPolicy"></bean>
+				</constructor-arg>
+			</bean>
+		</constructor-arg>
+		<constructor-arg index="1">
+			<list>
+				<bean class="com.cattsoft.collect.net.reader.CommandFileReader">
+					<constructor-arg index="0">
+						<list>
+							<value>dig</value>
+							<value>{}</value>
+							<value>+trace</value>
+						</list>
+					</constructor-arg>
+					<constructor-arg index="1" value="${dig.trace.reader.path}"/>
+					<constructor-arg index="2" value="${dig.trace.reader.skip}"/>
+					<property name="adapters">
+						<list>
+							<!-- 添加URL处理适配 -->
+							<bean class="com.cattsoft.collect.net.adapter.UrlAdapter"/>
+						</list>
+					</property>
+				</bean>
+			</list>
+		</constructor-arg>
+		<!-- 临时数据(CNAME)读取器配置 -->
+		<property name="readerstmp">
+			<list>
+				<bean class="com.cattsoft.collect.net.reader.CommandFileReader">
+					<constructor-arg index="0">
+						<list>
+							<value>dig</value>
+							<value>{}</value>
+							<value>+trace</value>
+						</list>
+					</constructor-arg>
+					<!-- 临时数据文件存放路径 -->
+					<constructor-arg index="1" value="${dig.trace.tmpdata.path}"/>
+					<!-- 临时数据文件断点文件 -->
+					<constructor-arg index="2" value="${dig.trace.tmpdata.skip}"/>
+					<!-- 读取完成后删除数据文件 -->
+					<property name="deleteFile" value="true"/>
+					<!-- 数据处理完成后删除断点记录文件 -->
+					<property name="deleteSkipFile" value="true"/>
+					<!-- 数据文件行参数分割符 -->
+					<property name="split" value=","/>
+				</bean>
+			</list>
+		</property>
+		<!-- 数据公共适配器 -->
+		<property name="adapters">
+			<list>
+				<bean class="com.cattsoft.collect.net.adapter.BasicResultAdaptor">
+					<constructor-arg index="0" value="{result}"/>
+				</bean>
+			</list>
+		</property>
+		<!-- 事件监听器 -->
+		<property name="listeners">
+			<list>
+				<!-- 响应数据写入监听器 -->
+				<bean class="com.cattsoft.collect.net.writer.BufferedWriterListener">
+					<constructor-arg index="0" value="${dig.trace.result.path}"/>
+					<constructor-arg index="1" value="${dig.trace.result.expression}"/>
+					<!-- 是否通过FTP上传 -->
+					<property name="transfer" value="${dig.trace.result.transfer}"/>
+					<!-- 数据文件分割配置 -->
+					<property name="spliter" ref="fileSpliter"/>
+					<property name="maxFrequency" value="${dig.trace.requency.max}"/>
+				</bean>
+				<!-- dig +trace 命令CNAME数据写入监听器-->
+				<bean class="com.cattsoft.collect.net.writer.BufferedWriterListener">
+					<constructor-arg index="0" value="${dig.trace.tmpdata.path}"/>
+					<property name="adapters">
+						<list>
+							<bean class="com.cattsoft.collect.net.adapter.ProcessCnameAdaptor">
+								<constructor-arg index="0" value="{result},{0}{newline}"/>
+								<!-- 禁用A记录信息,存在A记录时不记录CNAME信息 -->
+								<property name="disableArecord" value="true"/>
+								<!-- 出现多个CNAME字段时,取最后一个CNAME -->
+								<property name="extractLast" value="true"/>
+							</bean>
+						</list>
+					</property>
+					<!-- 数据文件不进行自动编号,保持一个文件 -->
+					<property name="autoNumber" value="false"/>
+					<!-- CNAME最大递归深度 -->
+					<property name="maxFrequency" value="${dig.trace.requency.max}"/>
+				</bean>
+				<!-- 命令执行进度写入监听器 -->
+				<bean class="com.cattsoft.collect.net.writer.ProgressWriterListener">
+					<constructor-arg index="0" value="${dig.trace.reader.skip}"/>
+					<property name="frequencyDelete" value="true"/>
+					<!-- 自动周期任务调度时需要设置进行删除 -->
+					<property name="deleted" value="true"/>
+				</bean>
+			</list>
+		</property>
+		<!-- 命令执行器是否启用 -->
+		<property name="enabled" value="${dig.trace.actuator.enabled}"/>
+		<!-- ftp传输配置 -->
+		<property name="ftp" ref="ftp"/>
+		<!-- 命令运行状态报告 -->
+		<property name="report" ref="report_gather"/>
+		<property name="directory" value="${dig.trace.cmd.directory}"/>
+	</bean>
+
+	<!-- ping 命令采集 -->
+	<bean id="ping_collect" class="com.cattsoft.collect.net.actuator.CommandActuator">
+		<constructor-arg index="0">
+			<!-- 线程池配置 -->
+			<bean class="java.util.concurrent.ThreadPoolExecutor">
+				<constructor-arg index="0" value="${thread.pool.min}" />
+				<constructor-arg index="1" value="${thread.pool.max}" />
+				<constructor-arg index="2" value="30" />
+				<constructor-arg index="3">
+					<bean class="java.util.concurrent.TimeUnit" factory-method="valueOf">
+						<constructor-arg index="0" value="SECONDS" />
+					</bean>
+				</constructor-arg>
+				<constructor-arg index="4">
+					<bean class="java.util.concurrent.LinkedBlockingQueue">
+						<constructor-arg index="0" value="2" />
+					</bean>
+				</constructor-arg>
+				<constructor-arg index="5">
+					<bean class="java.util.concurrent.ThreadPoolExecutor$CallerRunsPolicy"></bean>
+				</constructor-arg>
+			</bean>
+		</constructor-arg>
+		<constructor-arg index="1">
+			<list>
+				<bean class="com.cattsoft.collect.net.reader.CommandFileReader">
+					<constructor-arg index="0">
+						<list>
+							<value>scamper</value>
+							<value>-c</value>
+							<value>ping -c 10</value>
+							<value>-i</value>
+							<value>{}</value>
+							<!--
+							<value>ping</value>
+							<value>-n</value>
+							<value>10</value>
+							<value>{}</value>
+							-->
+						</list>
+					</constructor-arg>
+					<constructor-arg index="1" value="${ping.reader.path}"/>
+					<constructor-arg index="2" value="${ping.reader.skip}"/>
+					<property name="adapters">
+						<list>
+							<!-- 添加URL处理适配 -->
+							<bean class="com.cattsoft.collect.net.adapter.UrlAdapter"/>
+						</list>
+					</property>
+					<!-- 参数 split 对数据行按指定字符进行分割 -->
+					<property name="split" value=","/>
+				</bean>
+			</list>
+		</constructor-arg>
+		<!-- 事件监听器 -->
+		<property name="listeners">
+			<list>
+				<!-- 响应数据写入监听器 -->
+				<bean class="com.cattsoft.collect.net.writer.BufferedWriterListener">
+					<constructor-arg index="0" value="${ping.result.path}"/>
+					<property name="adapters">
+						<list>
+							<bean class="com.cattsoft.collect.net.adapter.ProcessPingAdaptor">
+								<!-- linux: -->
+								<!-- ^.*?([\w\d\.]+)\s\(([\d\.]+).*?(\d+)[\w\s]+,\s+(\d+)[\w\s]+,\s+(\d+)%[\w\s]+,.*?(\d+).*$
+									-->
+								<!-- scamper: -->
+								<!-- ^.*?([\d\.]+).*?([\d\.]+).*?(\d+)[\w\s]+,\s+(\d+)[\w\s]+,\s+(\d+)%.*?([\d\.]+)\s+ms$
+									-->
+								<!-- windows(中文): -->
+								<!-- ^.*\s\w+\s(.*?)\s\[(.*?)\].*?=\s+(\d+).*?(\d+).*\d.*\((\d+)%(.*\d+ms.*\d+ms.*?(\d+)ms)?
+									-->
+								<constructor-arg index="0" value="^.*?([\d\.]+).*?([\d\.]+).*?(\d+)[\w\s]+,\s+(\d+)[\w\s]+,\s+(\d+)%.*?([\d\.]+)\s+ms$"/>
+								<constructor-arg index="1" value="${ping.result.expression}"/>
+								<property name="maxLoss" value="${ping.trans.loss.max}"/>
+							</bean>
+						</list>
+					</property>
+					<property name="transfer" value="${ping.result.transfer}"/>
+					<!-- 数据文件分割配置 -->
+					<property name="spliter" ref="fileSpliter"/>
+				</bean>
+				<!-- IP数据写入监听器-->
+				<bean class="com.cattsoft.collect.net.writer.BufferedWriterListener">
+					<constructor-arg index="0" value="${ping.result.ip.path}"/>
+					<property name="adapters">
+						<list>
+							<bean class="com.cattsoft.collect.net.adapter.ProcessPingAdaptor">
+								<!-- linux: -->
+								<!-- ^.*?([\w\d\.]+)\s\(([\d\.]+).*?(\d+)[\w\s]+,\s+(\d+)[\w\s]+,\s+(\d+)%[\w\s]+,.*?(\d+).*$
+									-->
+								<!-- scamper: -->
+								<!-- ^.*?([\d\.]+).*?([\d\.]+).*?(\d+)[\w\s]+,\s+(\d+)[\w\s]+,\s+(\d+)%.*?([\d\.]+)\s+ms$
+									-->
+								<!-- windows(中文): -->
+								<!-- ^.*\s\w+\s(.*?)\s\[(.*?)\].*?=\s+(\d+).*?(\d+).*\d.*\((\d+)%(.*\d+ms.*\d+ms.*?(\d+)ms)?
+									-->
+								<constructor-arg index="0" value="^.*?([\d\.]+).*?([\d\.]+).*?(\d+)[\w\s]+,\s+(\d+)[\w\s]+,\s+(\d+)%.*?([\d\.]+)\s+ms$"/>
+								<constructor-arg index="1" value="${ping.result.ip.expression}"/>
+								<property name="maxLoss" value="${ping.trans.loss.max}"/>
+							</bean>
+						</list>
+					</property>
+					<property name="transfer" value="${ping.ip.result.transfer}"/>
+					<!-- 数据文件分割配置 -->
+					<property name="spliter" ref="fileSpliter"/>
+					<!-- 是否启用该IP数据写入器 -->
+					<property name="enabled" value="${ping.ip.writer.enabled}"/>
+				</bean>
+
+				<!-- 命令执行进度写入监听器 -->
+				<bean class="com.cattsoft.collect.net.writer.ProgressWriterListener">
+					<constructor-arg index="0" value="${ping.reader.skip}"/>
+					<property name="frequencyDelete" value="true"/>
+					<!-- 自动周期任务调度时需要设置进行删除 -->
+					<property name="deleted" value="true"/>
+				</bean>
+			</list>
+		</property>
+		<!-- 命令执行器是否启用 -->
+		<property name="enabled" value="${ping.actuator.enabled}"/>
+		<!-- ftp传输配置 -->
+		<property name="ftp" ref="ftp"/>
+		<!-- 命令运行状态报告 -->
+		<property name="report" ref="report_gather"/>
+		<!-- 是否忙时任务,重新格式化文件名称 -->
+		<property name="daily" value="${ping.task.daily}"/>
+	</bean>
+
+	<!-- trace 命令采集 -->
+	<bean id="trace_collect" class="com.cattsoft.collect.net.actuator.CommandActuator">
+		<constructor-arg index="0">
+			<!-- 线程池配置 -->
+			<bean class="java.util.concurrent.ThreadPoolExecutor">
+				<constructor-arg index="0" value="${thread.pool.min}" />
+				<constructor-arg index="1" value="${thread.pool.max}" />
+				<constructor-arg index="2" value="30" />
+				<constructor-arg index="3">
+					<bean class="java.util.concurrent.TimeUnit" factory-method="valueOf">
+						<constructor-arg index="0" value="SECONDS" />
+					</bean>
+				</constructor-arg>
+				<constructor-arg index="4">
+					<bean class="java.util.concurrent.LinkedBlockingQueue">
+						<constructor-arg index="0" value="2" />
+					</bean>
+				</constructor-arg>
+				<constructor-arg index="5">
+					<bean class="java.util.concurrent.ThreadPoolExecutor$CallerRunsPolicy"></bean>
+				</constructor-arg>
+			</bean>
+		</constructor-arg>
+		<constructor-arg index="1">
+			<list>
+				<bean class="com.cattsoft.collect.net.reader.CommandFileReader">
+					<constructor-arg index="0">
+						<list>
+							<value>scamper</value>
+							<value>-c</value>
+							<value>trace -P ICMP -M -l 5</value>
+							<value>-i</value>
+							<value>{}</value>
+						</list>
+					</constructor-arg>
+					<constructor-arg index="1" value="${trace.reader.path}"/>
+					<constructor-arg index="2" value="${trace.reader.skip}"/>
+					<!-- 参数 split 对数据行按指定字符进行分割 -->
+					<property name="split" value=","/>
+				</bean>
+			</list>
+		</constructor-arg>
+		<!-- 数据公共适配器 -->
+		<property name="adapters">
+			<list>
+				<bean class="com.cattsoft.collect.net.adapter.BasicResultAdaptor">
+					<constructor-arg index="0" value="{result}"/>
+				</bean>
+			</list>
+		</property>
+		<!-- 事件监听器 -->
+		<property name="listeners">
+			<list>
+				<!-- 响应数据写入监听器 -->
+				<bean class="com.cattsoft.collect.net.writer.BufferedWriterListener">
+					<constructor-arg index="0" value="${trace.result.path}"/>
+					<constructor-arg index="1" value="${trace.result.expression}"/>
+					<!-- 是否需要传输 -->
+					<property name="transfer" value="${trace.result.transfer}"/>
+					<!-- 数据文件分割配置 -->
+					<property name="spliter" ref="fileSpliter"/>
+				</bean>
+				<!-- 命令执行进度写入监听器 -->
+				<bean class="com.cattsoft.collect.net.writer.ProgressWriterListener">
+					<constructor-arg index="0" value="${trace.reader.skip}"/>
+					<property name="frequencyDelete" value="true"/>
+					<!-- 自动周期任务调度时需要设置进行删除 -->
+					<property name="deleted" value="true"/>
+				</bean>
+			</list>
+		</property>
+		<!-- 命令执行器是否启用 -->
+		<property name="enabled" value="${trace.actuator.enabled}"/>
+		<!-- ftp传输配置 -->
+		<property name="ftp" ref="ftp"/>
+		<!-- 命令运行状态报告 -->
+		<property name="report" ref="report_gather"/>
+		<property name="daily" value="${trace.task.daily}"/>
+	</bean>
+
+	<!-- Quartz 定时自动任务配置 -->
+	<bean id="collect_jobs" class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="triggers">
+			<list>
+				<!-- dig 采集命令 -->
+				<bean class="org.springframework.scheduling.quartz.CronTriggerBean">
+					<property name="jobDetail">
+						<bean class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+							<property name="targetObject">
+								<ref bean="dig_collect"/>
+							</property>
+							<!-- 同一任务在前一次执行未完成而Trigger时间又到时是否并发开始新的执行, 默认为true. -->
+							<property name="concurrent" value="false"/>
+							<property name="targetMethod" value="lanuch"/>
+						</bean>
+					</property>
+					<property name="cronExpression">
+						<value>${dig.quartz.expression}</value>
+					</property>
+				</bean>
+
+				<!-- dig+trace 采集命令 -->
+				<bean class="org.springframework.scheduling.quartz.CronTriggerBean">
+					<property name="jobDetail">
+						<bean class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+							<property name="targetObject">
+								<ref bean="dig_trace_collect"/>
+							</property>
+							<!-- 同一任务在前一次执行未完成而Trigger时间又到时是否并发开始新的执行, 默认为true. -->
+							<property name="concurrent" value="false"/>
+							<property name="targetMethod" value="lanuch"/>
+						</bean>
+					</property>
+					<property name="cronExpression">
+						<value>${dig.trace.quartz.expression}</value>
+					</property>
+				</bean>
+
+				<!-- ping 采集命令 -->
+				<bean class="org.springframework.scheduling.quartz.CronTriggerBean">
+					<property name="jobDetail">
+						<bean class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+							<property name="targetObject">
+								<ref bean="ping_collect"/>
+							</property>
+							<property name="concurrent" value="false"/>
+							<property name="targetMethod" value="lanuch"/>
+						</bean>
+					</property>
+					<property name="cronExpression">
+						<value>${ping.quartz.expression}</value>
+					</property>
+				</bean>
+				<!-- trace 采集命令 -->
+				<bean class="org.springframework.scheduling.quartz.CronTriggerBean">
+					<property name="jobDetail">
+						<bean class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+							<property name="targetObject">
+								<ref bean="trace_collect"/>
+							</property>
+							<property name="concurrent" value="false"/>
+							<property name="targetMethod" value="lanuch"/>
+						</bean>
+					</property>
+					<property name="cronExpression">
+						<value>${trace.quartz.expression}</value>
+					</property>
+				</bean>
+			</list>
+		</property>
+	</bean>
+</beans>

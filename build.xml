@@ -1,0 +1,230 @@
+<?xml version="1.0"?>
+<project name="collect" default="jar" basedir=".">
+	<!-- 项目名称 -->
+	<property name="project.name" value="NetCollection"/>
+	<!-- 编译人 -->
+	<property name="built-by" value="chenxiaohong@cattsoft.com"/>
+	<!-- 文件版本 -->
+	<property name="project.version" value="3.0.0"/>
+	<!-- 打包jar文件名 -->
+	<property name="jar.name" value="collector_net_${project.version}"/>
+	<!-- 打包后的jar文件存放目录 -->
+	<property name="dist.dir" value="dist"/>
+	<!-- 已编译的.class文件目录 -->
+	<property name="build.dir" value="bin"/>
+	<!-- 工程lib目录 -->
+	<property name="lib.dir" value="lib"/>
+	<!-- 源码目录 -->
+	<property name="src.dir" value="src"/>
+	<!-- 名称 -->
+	<property name="component.name" value="Network Data Acquisition System"/>
+	<!-- 机构名称 -->
+	<property name="component.vendor" value="DATANG SOFTWARE CO.LTD"/>
+	<!-- Main-Class主程序入口 -->
+	<property name="main.class" value="com.cattsoft.collect.net.main.CollectionEngine"/>
+	<!-- 文档目录 -->
+	<property name="doc.dir" value="doc"/>
+
+	<!--定义项目编译的时候,lib包的路径-->
+	<path id="project.class.path">
+		<!--<pathelement path=" " />-->
+		<!--  lib.dir contains all jar files, in several subdirectories  -->
+		<fileset dir="${lib.dir}">
+			<include name="**/*.jar" />
+		</fileset>
+	</path>
+	<!-- ========================= -->
+	<!--   target: clean           -->
+	<!-- ========================= -->
+	<target name="clean" description="清理">
+		<delete dir="${build.dir}"/>
+		<delete dir="${dist.dir}"/>
+		<mkdir dir="${build.dir}"/>
+		<mkdir dir="${dist.dir}"/>
+	</target>
+	<!-- ========================= -->
+	<!--   target: compile         -->
+	<!-- ========================= -->
+	<target name="compile" depends="clean" description="编译">
+		<!-- fork="java$$javac.exe" -->
+		<javac fork="true" target="1.6" encoding="utf-8" srcdir="${src.dir}" destdir="${build.dir}" includejavaruntime="false" includeantruntime="false">
+			<!--给编译器指定编码，防止出现："警告： 编码 GBK 的不可映射字符"-->
+			<compilerarg line="-encoding utf-8"/>
+			<!-- 代码检查 -->
+			<compilerarg value="-Xlint:unchecked"/>
+			<!-- class路径,包含lib -->
+			<classpath refid="project.class.path"/>
+		</javac>
+	</target>
+	<!-- ========================= -->
+	<!--      target: jar          -->
+	<!-- ========================= -->
+	<target name="jar" depends="compile" description="打包jar和清单文件(MANIFEST.MF)">
+		<!--  create a property containing all .jar files, prefix lib/, and seperated with a space  -->
+		<pathconvert property="libs.project" pathsep=" ">
+			<mapper>
+				<chainedmapper>
+					<!--  remove absolute path  -->
+					<flattenmapper/>
+					<!--  add lib/ prefix  -->
+					<globmapper from="*" to="lib/*"/>
+				</chainedmapper>
+			</mapper>
+			<path refid="project.class.path"/>
+		</pathconvert>
+		
+		<!--  数据采集模块打包  -->
+		<jar jarfile="${dist.dir}/${jar.name}.jar" basedir="${build.dir}">
+			<!-- 采集模块主目录 -->
+			<include name="**/collect/net/**"/>
+			<!-- 压缩模块目录 -->
+			<include name="**/file/archive/**"/>
+			<!-- FTP传输模块 -->
+			<include name="**/file/ftp/**"/>
+			<!-- 文件分割 -->
+			<include name="**/file/split/**"/>
+			<!-- 文件操作工具类 -->
+			<include name="**/file/utils/**"/>
+			<!-- 忽略test目录 -->
+			<exclude name="**/test*"/>
+			<!--  define MANIFEST.MF  -->
+			<manifest>
+				<attribute name="Built-By" value="${built-by}"/>
+				<!-- 程序入口方法-->
+				<attribute name="Main-Class" value="${main.class}"/>
+				<!--<section name="common">-->
+				<attribute name="Specification-Title" value="${component.name}"/>
+				<attribute name="Specification-Vendor" value="${component.vendor}"/>
+				<attribute name="Specification-Version" value="${project.version}"/>
+				<!--
+					<attribute name="Implementation-Title" value="${component.name}"/>
+					<attribute name="Implementation-Version" value="${component.version} ${TODAY}"/>
+					<attribute name="Implementation-Vendor" value="${component.vendor}"/>
+				-->
+				<!--</section>-->
+				<!--  finally, use the magically generated libs path  -->
+				<attribute name="Class-Path" value="${libs.project}"/>
+			</manifest>
+		</jar>
+		<!-- 管理界面打包 -->
+		<jar jarfile="${dist.dir}/collector_manage_${project.version}.jar" basedir="${build.dir}">
+			<!-- 管理模块主目录 -->
+			<include name="**/manage/**" />
+			<!-- 文件操作工具类 -->
+			<include name="**/file/utils/**"/>
+			<!-- 忽略test目录 -->
+			<exclude name="**/test*" />
+			<!--  define MANIFEST.MF  -->
+			<manifest>
+				<attribute name="Built-By" value="${built-by}" />
+				<!-- 程序入口方法-->
+				<attribute name="Main-Class" value="com.cattsoft.collect.manage.main.ManagerBoard" />
+				<!--<section name="common">-->
+				<attribute name="Specification-Title" value="${component.name}" />
+				<attribute name="Specification-Vendor" value="${component.vendor}" />
+				<attribute name="Specification-Version" value="${project.version}" />
+				<!--  finally, use the magically generated libs path  -->
+				<!-- <attribute name="Class-Path" value="${libs.project}" />  -->
+			</manifest>
+		</jar>
+
+		<!-- FTP 数据同步打包 -->
+		<jar jarfile="${dist.dir}/collector_sync_${project.version}.jar" basedir="${build.dir}">
+			<!-- 同步模块主目录 -->
+			<include name="**/sync/ftp/**" />
+			<!-- FTP传输模块 -->
+			<include name="**/file/ftp/**" />
+			<!-- ZIP文件操作模块 -->
+			<include name="**/file/archive/**" />
+			<!-- 文件操作工具类 -->
+			<include name="**/file/utils/**" />
+			<manifest>
+				<attribute name="Built-By" value="${built-by}" />
+				<!-- 程序入口方法-->
+				<attribute name="Main-Class" value="com.cattsoft.collect.io.file.sync.ftp.Sync" />
+			</manifest>
+		</jar>
+
+		<!-- 数据合并打包 -->
+		<jar jarfile="${dist.dir}/collector_merge_${project.version}.jar" basedir="${build.dir}">
+			<!-- 合并模块主目录 -->
+			<include name="**/file/merge/**" />
+			<!-- FTP传输模块 -->
+			<include name="**/file/ftp/**" />
+			<!-- ZIP文件操作模块 -->
+			<include name="**/file/archive/**" />
+			<!-- 数据完整性通知模块 -->
+			<include name="**/file/icv/**" />
+			<!-- 文件操作工具类 -->
+			<include name="**/file/utils/**" />
+			<manifest>
+				<attribute name="Built-By" value="${built-by}" />
+				<!-- 程序入口方法-->
+				<attribute name="Main-Class" value="com.cattsoft.collect.io.file.merge.FileMergeTask" />
+			</manifest>
+		</jar>
+
+		<!-- 源文件打包 -->
+		<jar jarfile="${dist.dir}/${jar.name}-src.jar" basedir="${src.dir}">
+			<!--打包所有java文件-->
+			<include name="**/com/**/*.java"/>
+			<manifest>
+				<attribute name="Built-By" value="${built-by}" />
+				<attribute name="Version" value="${project.version}" />
+			</manifest>
+		</jar>
+	</target>
+
+	<!-- ========================= -->
+	<!--      target: javadoc      -->
+	<!-- ========================= -->
+	<!-- Generate the API HTML pages -->
+	<target name="javadoc" description="Generate the Javadoc HTML pages.">
+		<delete dir="${doc.dir}" />
+		<mkdir dir="${doc.dir}" />
+		<javadoc destdir="${doc.dir}" windowtitle="${project.name} Code Generator API" use="yes" linksource="yes" encoding="UTF-8" charset="UTF-8" docencoding="UTF-8" splitindex="yes">
+			<classpath refid="project.class.path"/>
+			<packageset dir="${src.dir}" defaultexcludes="yes">
+				<include name="com/**" />
+				<include name="org/**" />
+				<include name="**/*.xml" />
+				<include name="**/*.properties" />
+			</packageset>
+		</javadoc>
+	</target>
+
+	<!-- ========================= -->
+	<!--        target: run        -->
+	<!-- ========================= -->
+	<target name="run" depends="jar" description="运行">
+		<!-- 将jar文件复制到根目录 -->
+		<!-- <copy file="${dist.dir}/${jar.name}" todir="."/> -->
+		<!-- <java jar="${dist.dir}/${jar.name}" fork="true"/> -->
+		<java jar="${dist.dir}/collector_manage_${project.version}.jar" fork="true">
+			<arg line="encoding=UTF-8" />
+		</java>
+	</target>
+
+	<!-- ========================= -->
+	<!--       target: zip         -->
+	<!-- ========================= -->
+	<target name="zip" description="" depends="jar,javadoc">
+		<zip zipfile="${dist.dir}/${project.name}_${project.version}.zip" update="no">
+			<zipfileset dir=".">
+				<include name="${dist.dir}/*.*" />
+				<include name="${doc.dir}/**" />
+				<include name="conf/*.xml" />
+				<include name="*.xml" />
+				<include name="**/*.properties" />
+				<include name="**/*.sh" />
+				<include name="**/*.md" />
+				<include name="**/*.cf" />
+				<exclude name="**/*.zip" />
+			</zipfileset>
+			<zipfileset dir="${lib.dir}" includes="*.jar" prefix="lib"/>
+			<zipfileset dir="${src.dir}" includes="*.xml"/>
+		</zip>
+	</target>
+
+	<target name="release" depends="clean,jar,javadoc,zip" description="打包" />
+</project>
