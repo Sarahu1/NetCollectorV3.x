@@ -22,10 +22,10 @@ import org.slf4j.LoggerFactory;
 
 import com.cattsoft.collect.io.file.archive.ZipFileUtils;
 import com.cattsoft.collect.io.file.icv.IntegrityCheckValue;
-import com.cattsoft.collect.io.file.utils.CommandType;
-import com.cattsoft.collect.io.file.utils.ConfigUtils;
-import com.cattsoft.collect.io.file.utils.FileUtils;
-import com.cattsoft.collect.io.file.utils.StringUtils;
+import com.cattsoft.collect.io.utils.CommandType;
+import com.cattsoft.collect.io.utils.ConfigUtils;
+import com.cattsoft.collect.io.utils.FileUtils;
+import com.cattsoft.collect.io.utils.StringUtils;
 
 /** 数据文件合并任务线程.
  * 线程定时扫描指定文件夹,合并数据文件

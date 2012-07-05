@@ -1,6 +1,8 @@
 package com.cattsoft.collect.manage.ui;
 
+import java.awt.Color;
 import java.awt.Container;
+import java.awt.Font;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
@@ -36,6 +38,8 @@ import com.cattsoft.collect.manage.data.ConfigUtils;
  *
  */
 public class UIUtils {
+	public static Font DEFAULT_FONT = new Font(Font.DIALOG, Font.PLAIN, 11);
+	
 	public static void addJTextComponent(Container root, JTextComponent component, String value, boolean editable, Rectangle rec) {
 		component.setText(value);
 		component.setEditable(editable);
@@ -176,5 +180,38 @@ public class UIUtils {
 			//
 		}
 		return terminal_list.toArray(new Object[0][0]);
+	}
+	
+	/**
+	 * 
+	 */
+	public static void addDefaultValueListener(final JTextComponent text, final String defVal) {
+		text.setFont(DEFAULT_FONT);
+		text.addFocusListener(new FocusAdapter() {
+			public void focusGained(FocusEvent e) {
+				setDefaultValue(text, defVal, false);
+				super.focusGained(e);
+			}
+			public void focusLost(FocusEvent e) {
+				setDefaultValue(text, defVal, true);
+				super.focusLost(e);
+			}
+		});
+	}
+	
+	/**
+	 * 
+	 */
+	public static void setDefaultValue(JTextComponent text, String defVal, boolean focusLost) {
+		if(text.getForeground() == Color.GRAY) {
+			text.setText("");
+			text.setFont(DEFAULT_FONT);
+			text.setForeground(Color.BLACK);
+		}
+		if(text.getText().isEmpty() && focusLost) {
+			text.setText(defVal);
+			text.setFont(new Font(Font.DIALOG, Font.ITALIC, 11));
+			text.setForeground(Color.GRAY);
+		}
 	}
 }

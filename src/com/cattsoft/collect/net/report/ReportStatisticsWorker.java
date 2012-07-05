@@ -409,7 +409,7 @@ public class ReportStatisticsWorker implements Runnable {
 			.append("\t").append(values_map.get("catalog"))
 			.append(LINE_SEPARATOR);
 		} catch (Exception e) {
-			logger.error("无法处理监测点({})状态报文数据:{}", monitor, values_map);
+			// logger.error("无法处理监测点({})状态报文数据:{}", monitor, values_map);
 		}
 	}
 	

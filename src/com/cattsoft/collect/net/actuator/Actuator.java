@@ -4,7 +4,6 @@
 package com.cattsoft.collect.net.actuator;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -25,8 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.cattsoft.collect.io.file.archive.ZipFileUtils;
-import com.cattsoft.collect.io.file.ftp.FtpUploadTask;
-import com.cattsoft.collect.io.file.utils.CommandType;
+import com.cattsoft.collect.io.net.ftp.FTPTask;
+import com.cattsoft.collect.io.utils.CommandType;
 import com.cattsoft.collect.net.adapter.BaseAdaptor;
 import com.cattsoft.collect.net.listener.BaseListener;
 import com.cattsoft.collect.net.process.ProcessResult;
@@ -68,7 +67,7 @@ public abstract class Actuator extends BaseListener {
 	/*** 命令工作目录 */
 	protected String directory = null;
 	/*** FTP文件传输任务队列 */
-	private FtpUploadTask ftp = null;
+	private FTPTask tasks = null;
 	/** 是否为忙时采集.
 	 *  为{@code true}时将格式化文件名称
 	 */
@@ -157,10 +156,7 @@ public abstract class Actuator extends BaseListener {
 					// 添加到上传任务列表
 					try {
 						// 添加到上传队列,完成后删除压缩文件, 并进行备份
-						ftp.push(zipath, backup);
-					} catch (FileNotFoundException e) {
-						logger.error("the data file upload failed!path:{},error:{}",
-								path, e.toString());
+						tasks.push(null, backup, zipath);
 					} catch (Exception e) {
 						logger.error("Add upload task when abnormal!{}", e.getMessage());
 					}
@@ -358,15 +354,15 @@ public abstract class Actuator extends BaseListener {
 	 * @param ftp
 	 *            FTP 文件传输
 	 */
-	public void setFtp(FtpUploadTask ftp) {
-		this.ftp = ftp;
+	public void setFtp(FTPTask ftp) {
+		this.tasks = ftp;
 	}
 
 	/**
 	 * @return 当前Ftp传输
 	 */
-	public FtpUploadTask getFtp() {
-		return ftp;
+	public FTPTask getFtp() {
+		return tasks;
 	}
 	
 	/**

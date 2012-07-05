@@ -11,9 +11,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.cattsoft.collect.io.file.archive.ZipFileUtils;
-import com.cattsoft.collect.io.file.ftp.CommonFtpClient;
-import com.cattsoft.collect.io.file.ftp.FtpUploadTask;
-import com.cattsoft.collect.io.file.utils.ConfigUtils;
+import com.cattsoft.collect.io.net.ftp.FTP;
+import com.cattsoft.collect.io.net.ftp.FTPTask;
+import com.cattsoft.collect.io.net.ftp.client.SFTPClient;
+import com.cattsoft.collect.io.utils.ConfigUtils;
 
 /**
  * 文件网络同步. 将本地文件同步到FTP服务器
@@ -38,7 +39,7 @@ public class Sync {
 	/*** 上传文件选择过滤 */
 	private FileFilter filter;
 	/*** FTP 上传任务 */
-	private FtpUploadTask task;
+	private FTPTask tasks;
 	/*** 同步间隔时长*/
 	private long period = 10000;
 	/*** 程序退出监听.*/
@@ -46,7 +47,7 @@ public class Sync {
 	/*** 扫描控制 */
 	private boolean scanning = true;
 	/*** FTP 客户端 */
-	private CommonFtpClient ftp;
+	private FTP ftp;
 	
 	/**
 	 * 默认构造.
@@ -114,16 +115,12 @@ public class Sync {
 		logger.info("本地备份目录:" + (null == backup ? "无" : backup));
 		
 		// FTP 客户端
-		ftp = new CommonFtpClient(this.host, this.port);
-		ftp.setUsername(user);
-		ftp.setPassword(pwd);
-		ftp.setWorkdir(path);
+		ftp = new SFTPClient(this.host, this.port, user, pwd, path);
 		// 创建FTP任务类
-		task = new FtpUploadTask(ftp);
-		// 任务未完成时保存路径
-		task.setTaskpath("sync_task.ftp");
 		// 文件上传完成后备份路径
-		task.setBackdir(backup);
+		tasks = new FTPTask(ftp, backup);
+		// 任务未完成时保存路径
+		tasks.setTaskpath("sync_task.ftp");
 		
 		// 文件选择器
 		selector = new Selector(this.local);
@@ -153,25 +150,23 @@ public class Sync {
 	 */
 	private void sync() {
 		// 上传任务完成时添加任务
-		if(task.isComplete()) {
-			// 选取文件
-			String[] files = selector.select(filter);
-			// 添加到上传任务
-			for (String file : files) {
-				try {
-					// 测试ZIP文件
-					if(file.endsWith(".zip")) {
-						ZipFileUtils.test(file);
-					}
-					// 添加
-					task.push(file, (null != backup));
-				} catch (FileNotFoundException e) {
-					// 文件不存在
-					logger.error("需要进行同步的文件已同步或不存在!" + e.getMessage());
-				} catch (Exception e) {
-					// 文件错误
-					logger.error("压缩文件测试错误!" + e.getMessage());
+		// 选取文件
+		String[] files = selector.select(filter);
+		// 添加到上传任务
+		for (String file : files) {
+			try {
+				// 测试ZIP文件
+				if(file.endsWith(".zip")) {
+					ZipFileUtils.test(file);
 				}
+				// 添加
+				tasks.push(file, (null != backup));
+			} catch (FileNotFoundException e) {
+				// 文件不存在
+				logger.error("需要进行同步的文件已同步或不存在!" + e.getMessage());
+			} catch (Exception e) {
+				// 文件错误
+				logger.error("压缩文件测试错误!" + e.getMessage());
 			}
 		}
 	}

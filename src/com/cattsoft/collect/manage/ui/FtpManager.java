@@ -29,11 +29,9 @@ import javax.swing.text.DefaultCaret;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
 
-import com.cattsoft.collect.io.file.utils.FileUtils;
-import com.cattsoft.collect.manage.ftp.ftp4j.FTPClient;
-import com.cattsoft.collect.manage.ftp.ftp4j.FTPCommunicationListener;
-import com.cattsoft.collect.manage.ftp.ftp4j.FTPDataTransferListener;
-import com.cattsoft.collect.manage.ftp.ftp4j.FTPFile;
+import com.cattsoft.collect.io.net.ftp.FTP;
+import com.cattsoft.collect.io.net.ftp.client.FtpTransferProcessListener;
+import com.cattsoft.collect.io.utils.FileUtils;
 import com.cattsoft.collect.manage.logging.LogManager;
 
 /**
@@ -45,7 +43,7 @@ public class FtpManager extends JFrame {
 	private Logger logger = LogManager.getLogger(getName());
 	/*** 根目录 */
 	private String rootDirectory;
-	private FTPClient ftp = null;
+	private FTP ftp = null;
 	private SimpleDateFormat sdf_time = new SimpleDateFormat("HH:mm:ss");
 	/*** Ftp信息打印面板 */
 	private JTextPane outputPanel;
@@ -59,8 +57,6 @@ public class FtpManager extends JFrame {
 	private String upload_folder;
 	/*** 主机名称 */
 	private String hostname = "";
-	/*** 是否打印FTP输出信息 */
-	private boolean printSent = false;
 	/*** 是否自动关闭窗口 */
 	private boolean autoClose = false;
 	/*** 右键菜单 */
@@ -81,7 +77,7 @@ public class FtpManager extends JFrame {
 	 * @param ftp
 	 * @param autoClose 完成后是否自动关闭窗口
 	 */
-	public FtpManager(String rootDirectory, String uploadDirectory, String hostname, FTPClient ftp, boolean autoClose) {
+	public FtpManager(String rootDirectory, String uploadDirectory, String hostname, FTP ftp, boolean autoClose) {
 		this.rootDirectory = rootDirectory;
 		this.upload_folder = uploadDirectory;
 		this.autoClose = autoClose;
@@ -94,19 +90,6 @@ public class FtpManager extends JFrame {
 			hostname = ftp.getHost();
 		}
 		this.hostname = hostname;
-		// 添加FTP文件输出
-		ftp.addCommunicationListener(new FTPCommunicationListener() {
-			public void sent(String statement) {
-				if(printSent) {
-					out("> " + statement);
-				}
-			}
-			public void received(String statement) {
-				if(printSent) {
-					out("< " + statement);
-				}
-			}
-		});
 		try {
 			init();
 		} catch (Exception e) {
@@ -114,7 +97,7 @@ public class FtpManager extends JFrame {
 		}
 	}
 	
-	public FtpManager(String rootDirectory, String uploadDirectory, String hostname, FTPClient ftp) {
+	public FtpManager(String rootDirectory, String uploadDirectory, String hostname, FTP ftp) {
 		this(rootDirectory, uploadDirectory, hostname, ftp, false);
 	}
 	
@@ -204,7 +187,7 @@ public class FtpManager extends JFrame {
 		setVisible(true);
 		
 		try {
-			String currentDirectory = ftp.currentDirectory();
+			String currentDirectory = ftp.printWorkingDirectory();
 			
 			out("当前工作目录:<b>" + currentDirectory +"</b>");
 			try {
@@ -213,49 +196,48 @@ public class FtpManager extends JFrame {
 					changeDirectory(rootDirectory);
 				}
 			} catch (Exception e) {
+				out("切换工作目录时出现异常!" + e.getMessage());
 				return;
 			}
-			if(rootDirectory.equals(currentDirectory)) {
-				File upload_file = new File(upload_folder);
-				if(upload_file.exists()) {
-					for (File file : upload_file.listFiles()) {
-						if(file.isDirectory()) {
-							files.put(file.getName(), FileUtils.listFiles(file));
-						} else {
-							files.put("", FileUtils.listFiles(upload_file));
-						}
+			File upload_file = new File(upload_folder);
+			if(upload_file.exists()) {
+				for (File file : upload_file.listFiles()) {
+					if(file.isDirectory()) {
+						files.put(file.getName(), FileUtils.listFiles(file));
+					} else {
+						files.put("", FileUtils.listFiles(upload_file));
 					}
-				} else {
-					out("<font color=\"red\">" + "未找到目录 " + upload_folder +",请添加该目录后重新进行上传</font>");
-					out("<b>添加目录"+upload_folder+"后,该目录下所有文件将自动上传至服务器</b>");
-					out("<b>如果存在子目录,目录名称请与服务器目录名称相同,否则文件无法上传</b>");
-					return;
 				}
-				// 打印文件清单
-				if(!files.isEmpty()) {
-					out("<b>上传文件清单:</b>");
-					logger.info("文件清单:");
-					for(Map.Entry<String, File[]> entry : files.entrySet()) {
-						out("目录:<b>" + (entry.getKey().isEmpty() ? "/" : entry.getKey()) + "</b>");
-						logger.info("目录:" + entry.getKey());
-						for (File entry_file : entry.getValue()) {
-							out("&emsp;" + entry_file.getAbsolutePath());
-							logger.info("\t" + entry_file.getAbsolutePath());
-						}
+			} else {
+				out("<font color=\"red\">" + "未找到目录 " + upload_folder +",请添加该目录后重新进行上传</font>");
+				out("<b>添加目录"+upload_folder+"后,该目录下所有文件将自动上传至服务器</b>");
+				out("<b>如果存在子目录,目录名称请与服务器目录名称相同,否则文件无法上传</b>");
+				return;
+			}
+			// 打印文件清单
+			if(!files.isEmpty()) {
+				out("<b>上传文件清单:</b>");
+				logger.info("文件清单:");
+				for(Map.Entry<String, File[]> entry : files.entrySet()) {
+					out("目录:<b>" + (entry.getKey().isEmpty() ? "/" : entry.getKey()) + "</b>");
+					logger.info("目录:" + entry.getKey());
+					for (File entry_file : entry.getValue()) {
+						out("&emsp;" + entry_file.getAbsolutePath());
+						logger.info("\t" + entry_file.getAbsolutePath());
 					}
-					// 等等2秒后进行上传
-					// 期间可以进行取消,清除文件列表
+				}
+				// 等等2秒后进行上传
+				// 期间可以进行取消,清除文件列表
+				Thread.sleep(2000);
+				upload();
+				if(autoClose) {
+					// 2秒后关闭
 					Thread.sleep(2000);
-					upload();
-					if(autoClose) {
-						// 2秒后关闭
-						Thread.sleep(2000);
-						// 关闭窗口
-						UIUtils.dispatchCloseEvent(this);
-					}
-				} else {
-					out("目录<b>" + upload_folder + "</b>没有可上传的文件");
+					// 关闭窗口
+					UIUtils.dispatchCloseEvent(this);
 				}
+			} else {
+				out("目录<b>" + upload_folder + "</b>没有可上传的文件");
 			}
 		} catch (Exception e) {
 			out("无法上传文件!" + e.getMessage());
@@ -291,39 +273,23 @@ public class FtpManager extends JFrame {
 	 * @param file 文件
 	 * @param restartAt 断点位置
 	 */
-	private boolean uploadRetry(final File file, final long restartAt) {
+	private boolean uploadRetry(final File file) {
 		try {
-			ftp.upload(file, restartAt, new FTPDataTransferListener() {
-				double step = (file.length() / 100d);
-				double process = 0;
-				double totalBytesTransferred = 0;
+			return ftp.upload(ftp.printWorkingDirectory(), file, false, new FtpTransferProcessListener() {
 				double preProcess = 0;
-				// 传输进度
-				public void transferred(int length) {
-					totalBytesTransferred += length;
-					if (totalBytesTransferred / step != process) {
-						process = (totalBytesTransferred) / step;
-						// 更新上传进度
-						double round_process = Math.floor(process);
-						if (((round_process - preProcess) >= 10d)
-								&& (round_process % 10 == 0)) {
-							preProcess = round_process;
-							out("文件<b>"+file.getName()+"</b>上传进度:<b>"+round_process+"%</b>", round_process == 100);
-						}
+				public void process(long step) {
+					double round_process = step;
+					if (((round_process - preProcess) >= 10)
+							&& (round_process % 10 == 0)) {
+						preProcess = round_process;
+						out("文件<b>"+file.getName()+"</b>上传进度:<b>"+round_process+"%</b>", round_process == 100);
 					}
 				}
-				public void started() {
-					out("文件<b>"+file.getName()+"</b>上传进度:<b>0%</b>", false);
+				
+				public void complete() {
+					super.complete();
 				}
-				public void failed() {
-					autoClose = false;
-				}
-				public void completed() {
-					out("<b>文件"+file.getPath()+"上传完成</b>");
-				}
-				public void aborted() {}
 			});
-			return true;
 		} catch (Exception e) {
 			autoClose = false;
 			out("<b style = \"color:red\">文件" + file.getPath() + "上传失败!" + e.getMessage() + "</b>");
@@ -343,19 +309,19 @@ public class FtpManager extends JFrame {
 		while(iterator.hasNext()) {
 			Map.Entry<String, File[]> entry = iterator.next();
 			// 路径分隔符固定使用 /,Linux不识别 \ 这样的符号.未使用 File.separator
-			String directroy = rootDirectory + "/" + entry.getKey();
+			String directroy = rootDirectory + "/" + entry.getKey() + "/";
 			if("".equals(entry.getKey().trim())) {
 				// 根目录
 				directroy = rootDirectory;
 			}
 			// 切换到相应目录
 			try {
-				ftp.changeDirectory(directroy);
+				ftp.cwd(directroy);
 			} catch (Exception e) {
 				try {
-					if(ftp.list(directroy).length == 0) {
+					if(ftp.ls(directroy).length == 0) {
 						out("<b>服务器中未找到目录\""+directroy+"\",正在创建..</b>");
-						ftp.createDirectory(directroy);
+						ftp.mkdir(directroy);
 						// 切换
 						changeDirectory(directroy);
 					} else {
@@ -383,15 +349,14 @@ public class FtpManager extends JFrame {
 							out("文件(<b>"+ file.getAbsolutePath() +"</b>)无法上传至服务器,<b>上传失败!</b>");
 							break;
 						}
-						long restartAt = 0;
 						// 已重试上传,读取断点位置
 						if(retries > 1) {
-							restartAt = getRestartAt(file);
-							out("正在尝试重新上传该文件("+ file.getName() +")" + (restartAt > 0 ? (", <b>断点续传</b>位置:" + restartAt) : ""));
+							out("正在尝试重新上传该文件("+ file.getName() +")");
 						}
 						// 上传,返回是否上传成功
-						uploaded = uploadRetry(file, restartAt);
+						uploaded = uploadRetry(file);
 						if(uploaded) {
+							out("<b>文件"+file.getPath()+"上传完成</b>");
 							break;
 						}
 					}
@@ -406,7 +371,6 @@ public class FtpManager extends JFrame {
 			// 上传完成后删除当前节点
 			iterator.remove();
 		}
-		printSent = true;
 		// 打印根目录文件清单
 		out("<b>文件上传完成</b>");
 		printFileInventory();
@@ -433,37 +397,37 @@ public class FtpManager extends JFrame {
 	 */
 	private void printFileInventory() {
 		try {
-			FTPFile[] files = ftp.list(rootDirectory);
-			out("<b>目录("+rootDirectory+")清单:</b>");
-			printSent = false;
-			SimpleDateFormat sdf_date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-			for (FTPFile ftpFile : files) {
-				if (ftpFile.getName().equals(".")
-						|| ftpFile.getName().equals("..")) {
-					continue;
-				}
-				if (ftpFile.getType() == FTPFile.TYPE_DIRECTORY) {
-					out("<b>"+ftpFile.getName()+"</b>&emsp;&emsp;" + sdf_date.format(ftpFile.getModifiedDate()));
-					// 打印子目录
-					try {
-						FTPFile[] child_files = ftp.list(rootDirectory + "/" + ftpFile.getName());
-						for (FTPFile ftpFile2 : child_files) {
-							if (ftpFile2.getName().equals(".")
-									|| ftpFile2.getName().equals("..")) {
-								continue;
-							}
-							if (ftpFile2.getType() == FTPFile.TYPE_DIRECTORY) {
-								out("&emsp;&emsp;<b>"+ftpFile2.getName()+"</b>&emsp;&emsp;" + sdf_date.format(ftpFile2.getModifiedDate()));
-							} else if (ftpFile2.getType() == FTPFile.TYPE_FILE) {
-								out("&emsp;&emsp;" + ftpFile2.getName() + "&emsp;&emsp;" + sdf_date.format(ftpFile2.getModifiedDate()));
-							}
-						}
-					} catch (Exception e) {
-					}
-				} else if (ftpFile.getType() == FTPFile.TYPE_FILE) {
-					out(ftpFile.getName() + "&emsp;&emsp;" + sdf_date.format(ftpFile.getModifiedDate()));
-				}
-			}
+//			FTPFile[] files = ftp.ls(rootDirectory);
+//			out("<b>目录("+rootDirectory+")清单:</b>");
+//			printSent = false;
+//			SimpleDateFormat sdf_date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+//			for (FTPFile ftpFile : files) {
+//				if (ftpFile.getName().equals(".")
+//						|| ftpFile.getName().equals("..")) {
+//					continue;
+//				}
+//				if (ftpFile.getType() == FTPFile.TYPE_DIRECTORY) {
+//					out("<b>"+ftpFile.getName()+"</b>&emsp;&emsp;" + sdf_date.format(ftpFile.getModifiedDate()));
+//					// 打印子目录
+//					try {
+//						FTPFile[] child_files = ftp.list(rootDirectory + "/" + ftpFile.getName());
+//						for (FTPFile ftpFile2 : child_files) {
+//							if (ftpFile2.getName().equals(".")
+//									|| ftpFile2.getName().equals("..")) {
+//								continue;
+//							}
+//							if (ftpFile2.getType() == FTPFile.TYPE_DIRECTORY) {
+//								out("&emsp;&emsp;<b>"+ftpFile2.getName()+"</b>&emsp;&emsp;" + sdf_date.format(ftpFile2.getModifiedDate()));
+//							} else if (ftpFile2.getType() == FTPFile.TYPE_FILE) {
+//								out("&emsp;&emsp;" + ftpFile2.getName() + "&emsp;&emsp;" + sdf_date.format(ftpFile2.getModifiedDate()));
+//							}
+//						}
+//					} catch (Exception e) {
+//					}
+//				} else if (ftpFile.getType() == FTPFile.TYPE_FILE) {
+//					out(ftpFile.getName() + "&emsp;&emsp;" + sdf_date.format(ftpFile.getModifiedDate()));
+//				}
+//			}
 		} catch (Exception e) {
 			//
 		}
@@ -479,57 +443,23 @@ public class FtpManager extends JFrame {
 	 */
 	private void changeDirectory(String directroy) throws Exception {
 		try {
-			ftp.changeDirectory(directroy);
-			out("当前工作目录:<b>" + ftp.currentDirectory() + "</b>");
+			ftp.cwd(directroy);
+			out("当前工作目录:<b>" + ftp.printWorkingDirectory() + "</b>");
 		} catch (Exception e) {
 			out("<b style = \"font-weight:bold;color:red\">切换工作目录("+directroy+")失败!</b>");
 			throw e;
 		}
 	}
 	
-	/**
-	 * 获取文件断点续传位置
-	 */
-	private long getRestartAt(File file) {
-		long restartAt = 0;
-		try {
-			// 查找文件,长度是否小于本地文件长度
-			FTPFile[] ftpfiles = ftp.list(file.getName());
-			if(ftpfiles.length > 0) {
-				// 比对第一个文件长度
-				long ftpFileLen = ftpfiles[0].getSize();
-				if(ftpFileLen <= file.length()) {
-					restartAt = ftpFileLen;
-				} else if(ftpFileLen > file.length()) {
-					// 远程文件长度大于本地文件,删除远程文件重新上传
-					// 删除该文件
-					ftp.deleteFile(file.getName());
-				}
-			}
-		} catch (Exception e) {
-			out("无法读取文件("+ file.getName() +")断点位置,将重新上传该文件");
-		}
-		return restartAt;
-	}
-	
 	protected void processWindowEvent(WindowEvent e) {
 		if (e.getID() == WindowEvent.WINDOW_CLOSING) {
 			try {
-				if(uploading) {
-					uploading = false;
-					try {
-						ftp.abortCurrentDataTransfer(false);
-					} catch (Exception e1) {
-					}
-					out("<b>文件上传已取消</b>");
-					return;
-				} else if(!files.isEmpty()) {
+				if(uploading || !files.isEmpty()) {
 					int flag = JOptionPane.showConfirmDialog(null, "文件上传尚未完成,是否中断?", "取消上传", JOptionPane.YES_NO_OPTION);
 					if(flag != JOptionPane.YES_OPTION) {
 						return;
 					}
-					ftp.abortCurrentConnectionAttempt();
-					ftp.abortCurrentDataTransfer(false);
+					ftp.disconnect(true);
 					out("<b>用户取消上传<b>");
 					logger.info("用户已取消上传");
 				}
@@ -541,7 +471,6 @@ public class FtpManager extends JFrame {
 			try {
 				super.processWindowEvent(e);
 				// 关闭后断开FTP连接
-				ftp.logout();
 				ftp.disconnect(true);
 			} catch (Exception e3) {
 			}

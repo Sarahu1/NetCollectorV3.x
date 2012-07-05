@@ -97,11 +97,13 @@ public class ServerSetDialog extends JDialog {
 		add(lblPort);
 		txtHost = new JTextField(host);
 		txtHost.setBounds(89, 30, 180, 24);
+		UIUtils.addDefaultValueListener(txtHost, "202.108.49.59");
 		
 		txtPort = new JTextField(port);
 		txtPort.setBounds(89, 64, 180, 24);
 		UIUtils.setNumberDocument(txtPort);
 		txtPort.setText(String.valueOf(port));
+		UIUtils.addDefaultValueListener(txtPort, "8089");
 		
 		btnClose = new JButton("关闭");
 		btnClose.setBounds(135, 104, 62, 24);
@@ -117,6 +119,12 @@ public class ServerSetDialog extends JDialog {
 		btnConnect.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent actionevent) {
 				try {
+					UIUtils.setDefaultValue(txtHost, "202.108.49.59", false);
+					UIUtils.setDefaultValue(txtPort, "8089", false);
+					if(txtHost.getText().isEmpty()) {
+						txtHost.requestFocus();
+						return;
+					}
 					setting(getHost(), getPort());
 					close();
 				} catch (NumberFormatException e) {

@@ -8,16 +8,21 @@
 		<property name="location" value="conf/collect.properties"/>
 	</bean>
 	<!-- FTP 传输 -->
-	<bean id="ftp" class="com.cattsoft.collect.io.file.ftp.FtpUploadTask" init-method="lanuch">
+	<bean id="ftp" class="com.cattsoft.collect.io.net.ftp.FTPTask">
 		<constructor-arg index="0">
-			<bean class="com.cattsoft.collect.io.file.ftp.CommonFtpClient">
+			<!-- FTP 传输方式 -->
+			<!-- FTP: com.cattsoft.collect.io.net.ftp.client.NFTPClient 端口:21-->
+			<!-- SFTP: com.cattsoft.collect.io.net.ftp.client.SFTPClient 端口:22-->
+			<bean class="com.cattsoft.collect.io.net.ftp.client.NFTPClient">
 				<constructor-arg index="0" value="${collect.ftp.host}"/>
 				<constructor-arg index="1" value="${collect.ftp.port}"/>
-				<property name="username" value="${collect.ftp.username}"/>
-				<property name="password" value="${collect.ftp.password}"/>
-				<property name="workdir" value="${collect.ftp.workdir}"/>
+				<constructor-arg index="2" value="${collect.ftp.username}"/>
+				<constructor-arg index="3" value="${collect.ftp.password}"/>
+				<constructor-arg index="4" value="${collect.ftp.workdir}"/>
 			</bean>
 		</constructor-arg>
+		<!-- 备份目录 -->
+		<constructor-arg index="1" value="${collect.ftp.backup}"/>
 		<!-- 当程序退出而FTP存在上传任务未完成时,任务将缓存到该文件 -->
 		<property name="taskpath" value="${collect.ftp.taskpath}"/>
 	</bean>

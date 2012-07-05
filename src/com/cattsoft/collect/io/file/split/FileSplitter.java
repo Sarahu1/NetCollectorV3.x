@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.cattsoft.collect.io.file.utils.StringUtils;
+import com.cattsoft.collect.io.utils.StringUtils;
 
 /** 文件分割工具.
  * <blockquote>

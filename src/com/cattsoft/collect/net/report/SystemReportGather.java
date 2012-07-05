@@ -19,7 +19,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.cattsoft.collect.io.file.utils.CommandType;
+import com.cattsoft.collect.io.utils.CommandType;
 import com.cattsoft.collect.net.listener.BaseListener;
 import com.cattsoft.collect.net.process.ProcessResult;
 import com.cattsoft.collect.net.process.ProcessRunner;

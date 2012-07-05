@@ -4,6 +4,7 @@
 package com.cattsoft.collect.manage.ui;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Rectangle;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
@@ -14,23 +15,27 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.io.File;
-import java.net.UnknownHostException;
 import java.util.Properties;
 import java.util.logging.Logger;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
 
+import com.cattsoft.collect.io.net.ftp.FTP;
+import com.cattsoft.collect.io.net.ftp.client.NFTPClient;
+import com.cattsoft.collect.io.net.ftp.client.SFTPClient;
 import com.cattsoft.collect.manage.data.ConfigUtils;
 import com.cattsoft.collect.manage.data.EncryptUtil;
-import com.cattsoft.collect.manage.ftp.ftp4j.FTPClient;
 import com.cattsoft.collect.manage.logging.LogManager;
 
 /** Ftp连接管理确认界面.
@@ -58,7 +63,7 @@ public class MonitorFtpConnect extends JDialog {
 	/*** 主机名称 */
 	private String hostname;
 	/*** FTP客户端 */
-	private FTPClient ftp;
+	private FTP ftp;
 	/*** FTP连接是否已完成 */
 	private boolean complete = false;
 	/*** 是否自动连接 */
@@ -116,11 +121,11 @@ public class MonitorFtpConnect extends JDialog {
 			public void focusLost(FocusEvent e) {
 				JTextField source = (JTextField)e.getSource();
 				if(source.getText().isEmpty())
-					source.setText(prop.getProperty("ftp.port", "21"));
+					source.setText(prop.getProperty("ftp.port", "22"));
 				super.focusLost(e);
 			}
 		});
-		txtPort.setText(prop.getProperty("ftp.port", "21"));
+		txtPort.setText(prop.getProperty("ftp.port", "22"));
 		txtPort.setBounds(new Rectangle(265, 20, 45, 22));
 		add(lblPort);
 		add(txtPort);
@@ -204,8 +209,6 @@ public class MonitorFtpConnect extends JDialog {
 			public void actionPerformed(ActionEvent e) {
 				close();
 				try {
-					// 手动关闭,断开连接
-					ftp.abortCurrentConnectionAttempt();
 					// 断开FTP连接
 					ftp.disconnect(false);
 				} catch (Exception e1) {
@@ -286,6 +289,7 @@ public class MonitorFtpConnect extends JDialog {
 	private void saveConfig() {
 		try {
 			Properties props = ConfigUtils.getProp();
+			props.put("ftp.port", txtPort.getText());
 			props.put("sshuser", txtUserName.getText());
 			props.put("sshpwd", EncryptUtil.desedeEncoder(new String(txtPassword.getPassword()), EncryptUtil.DEFAULT_DESKEY));
 			props.put("catalog", txtFolder.getText());
@@ -332,36 +336,83 @@ public class MonitorFtpConnect extends JDialog {
 		// 创建线程连接并登录FTP主机
 		new Thread(new Runnable() {
 			public void run() {
-				ftp = new FTPClient();
+				// 端口22使用SFTP上传
+				if(port == 22) {
+					ftp = new SFTPClient(host, port, user, pwd, folder);
+				} else {
+					try {
+						ftp = new NFTPClient(host, port, user, pwd, folder);
+					} catch (Exception e) {
+						JOptionPane.showMessageDialog(null, "初始化FTP客户端时出现异常!请重启程序后重试", "错误", JOptionPane.ERROR_MESSAGE);
+					} catch (NoClassDefFoundError e) {
+						// 未找到apache net模块
+						JOptionPane jop = new JOptionPane();
+						// 未找到apache net模块
+						Font font = jop.getFont();
+
+					    // create some css from the label's font
+					    StringBuffer style = new StringBuffer("font-family:" + font.getFamily() + ";");
+					    style.append("font-weight:" + (font.isBold() ? "bold" : "normal") + ";");
+					    style.append("font-size:" + font.getSize() + "pt;");
+
+					    JEditorPane ep = new JEditorPane("text/html", "<html><body style=\"" + style + "\">需要<a href=\"http://commons.apache.org/net/\">Apache Commons Net™</a>" +
+								"模块支持,请下载该模块后重新启动程序</body></html>");
+						// handle link events
+						ep.addHyperlinkListener(new HyperlinkListener() {
+							public void hyperlinkUpdate(HyperlinkEvent e) {
+								try {
+									if (e.getEventType().equals(
+											HyperlinkEvent.EventType.ACTIVATED)) {
+										java.awt.Desktop dp = java.awt.Desktop
+												.getDesktop();
+										// 判断系统桌面是否支持要执行的功能
+										if (dp.isSupported(java.awt.Desktop.Action.BROWSE)) {
+											// 获取系统默认浏览器打开链接
+											dp.browse(e.getURL().toURI());
+										}
+									}
+								} catch (Exception e2) {
+								}
+							}
+						});
+					    ep.setEditable(false);
+					    ep.setBackground(jop.getBackground());
+						
+						JOptionPane.showMessageDialog(null, ep, "缺少模块", JOptionPane.ERROR_MESSAGE);
+						return;
+					}
+				}
 				String connTit = btnConn.getText();
 				try {
 					btnConn.setText("连接中..");
 					enabledControls(false);
 					
 					// 已连接并已登录
-					if(txtHost.equals(ftp.getHost()) && ftp.isConnected() && ftp.isAuthenticated()) {
+					if(txtHost.equals(ftp.getHost()) && ftp.isConnected() && ftp.isLogged()) {
 						logger.info("Ftp已连接成功");
 					} else {
 						// 未连接
 						if(!ftp.isConnected()) {
-							ftp.connect(host, port);
+							ftp.connect();
 						}
 						if(ftp.isConnected()) {
 							logger.info("Ftp连接成功!");
-							logger.info("正在登录到Ftp..");
-							ftp.login(user, pwd);
+							if(!ftp.isLogged()) {
+								logger.info("正在登录到Ftp..");
+								ftp.login();
+							}
 						}
 					}
-					if(ftp.isAuthenticated()) {
+					if(ftp.isConnected() && ftp.isLogged()) {
 						logger.info("登录Ftp服务器成功!");
 						// 保存用户记录数据
 						saveConfig();
 						try {
 							// 切换工作目录
-							ftp.changeDirectory(folder);
-							logger.info("当前工作目录:" + ftp.currentDirectory());
+							ftp.cwd(folder);
+							logger.info("当前工作目录:" + ftp.printWorkingDirectory());
 						} catch (Exception e) {
-							if(ftp.list(folder).length > 0) {
+							if(ftp.ls(folder).length > 0) {
 								logger.info("切换到工作目录("+folder+")时出现异常!" + e);
 							} else {
 								int flag = JOptionPane
@@ -373,8 +424,8 @@ public class MonitorFtpConnect extends JDialog {
 												JOptionPane.WARNING_MESSAGE);
 								if(flag == JOptionPane.YES_OPTION) {
 									try {
-										ftp.createDirectory(folder);
-										ftp.changeDirectory(folder);
+										ftp.mkdir(folder);
+										ftp.cwd(folder);
 									} catch (Exception e2) {
 										JOptionPane.showMessageDialog(null, "创建目录失败!请手动在服务器上创建该工作目录!", "目录创建", JOptionPane.ERROR_MESSAGE);
 										return;
@@ -388,10 +439,6 @@ public class MonitorFtpConnect extends JDialog {
 					complete = true;
 					close();
 					new FtpManager(folder, txtUfolder.getText(), hostname, ftp, autoCloseFtp);
-				} catch(UnknownHostException e) {
-					JOptionPane.showMessageDialog(null, ("无法连接到Ftp主机(" + host
-							+ "),请检查主机地址是否正确!\n" + e.getMessage()), "连接失败",
-							JOptionPane.WARNING_MESSAGE);
 				} catch (Exception e) {
 					JOptionPane.showMessageDialog(null, ("无法连接到Ftp主机(" + host
 							+ "),请检查网络!\n" + e.getMessage()), "连接失败",

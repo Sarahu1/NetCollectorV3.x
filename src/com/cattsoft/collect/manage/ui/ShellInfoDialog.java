@@ -29,10 +29,10 @@ import javax.swing.text.JTextComponent;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
 
+import com.cattsoft.collect.io.net.ssh.SSHShell;
 import com.cattsoft.collect.manage.data.ConfigUtils;
 import com.cattsoft.collect.manage.data.EncryptUtil;
 import com.cattsoft.collect.manage.logging.LogManager;
-import com.cattsoft.collect.manage.ssh.SSHShell;
 
 /** SSH 连接信息设置对话框
  * @author Xiaohong

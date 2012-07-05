@@ -8,6 +8,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
@@ -15,6 +17,7 @@ import java.awt.geom.RoundRectangle2D;
 import java.io.File;
 import java.util.logging.Logger;
 
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -24,6 +27,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JToolBar;
+import javax.swing.KeyStroke;
 import javax.swing.UIManager;
 
 import com.cattsoft.collect.manage.data.ConfigUtils;
@@ -61,6 +65,12 @@ public class ManagerBoard extends JFrame {
 	/*** 服务设置对话框 */
 	private ServerSetDialog dialog = null;
 	
+	// 菜单项
+	private JMenuItem menu_item_set;
+	private JMenuItem menu_item_terminal_upload;
+	private JMenuItem menu_item_terminal_mgr;
+	private JMenuItem menu_item_terminal_table;
+	
 	public ManagerBoard() {
 		super("云平台基础数据采集管理");
 		logger.info("正在启动采集管理程序..");
@@ -93,7 +103,7 @@ public class ManagerBoard extends JFrame {
 		menu_file.setMnemonic('f');
 		JMenu menu_help = new JMenu(" 帮助(H) ");
 		menu_help.setMnemonic('h');
-		JMenuItem menu_item_set = new JMenuItem("设置(O)"); 
+		menu_item_set = new JMenuItem("设置(O)"); 
 		menu_item_set.setMnemonic('o');
 		menu_item_set.setToolTipText("设置数据服务");
 		menu_item_set.addActionListener(new ActionListener() {
@@ -104,7 +114,7 @@ public class ManagerBoard extends JFrame {
 		// 单独终端管理
 		JMenu menu_item_terminal = new JMenu("终端(T)");
 		menu_item_terminal.setMnemonic('t');
-		JMenuItem menu_item_terminal_mgr = new JMenuItem("管理(M)");
+		menu_item_terminal_mgr = new JMenuItem("管理(M)");
 		menu_item_terminal_mgr.setMnemonic('m');
 		menu_item_terminal_mgr.setToolTipText("启动/停止终端程序");
 		menu_item_terminal_mgr.addActionListener(new ActionListener() {
@@ -112,15 +122,15 @@ public class ManagerBoard extends JFrame {
 				new ShellInfoDialog("", null, null, null, null);
 			}
 		});
-		JMenuItem menu_item_terminal_update = new JMenuItem("上传(U)");
-		menu_item_terminal_update.setMnemonic('u');
-		menu_item_terminal_update.setToolTipText("管理终端程序文件");
-		menu_item_terminal_update.addActionListener(new ActionListener() {
+		menu_item_terminal_upload = new JMenuItem("上传(U)");
+		menu_item_terminal_upload.setMnemonic('u');
+		menu_item_terminal_upload.setToolTipText("管理终端程序文件");
+		menu_item_terminal_upload.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				new MonitorFtpConnect(null, "", "", null);
 			}
 		});
-		JMenuItem menu_item_terminal_table = new JMenuItem("对照表(I)");
+		menu_item_terminal_table = new JMenuItem("对照表(I)");
 		menu_item_terminal_table.setMnemonic('i');
 		menu_item_terminal_table.setToolTipText("监测终端对照表");
 		menu_item_terminal_table.addActionListener(new ActionListener() {
@@ -134,7 +144,7 @@ public class ManagerBoard extends JFrame {
 		});
 		menu_item_terminal.add(menu_item_terminal_mgr);
 		menu_item_terminal.addSeparator();
-		menu_item_terminal.add(menu_item_terminal_update);
+		menu_item_terminal.add(menu_item_terminal_upload);
 		menu_item_terminal.addSeparator();
 		menu_item_terminal.add(menu_item_terminal_table);
 		
@@ -228,6 +238,35 @@ public class ManagerBoard extends JFrame {
 				}
 			}
 		};
+		
+		// 热键注册
+		// 上传
+		menu_item_terminal_upload.registerKeyboardAction(new ActionListener() {  
+			public void actionPerformed(ActionEvent e) {  
+				menu_item_terminal_upload.doClick();
+			}  
+		}, KeyStroke.getKeyStroke(KeyEvent.VK_U, InputEvent.CTRL_DOWN_MASK), JComponent.WHEN_IN_FOCUSED_WINDOW); 
+		// 服务设置
+		menu_item_set.registerKeyboardAction(new ActionListener() {  
+			public void actionPerformed(ActionEvent e) {  
+				menu_item_set.doClick();
+			}  
+		}, KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK), JComponent.WHEN_IN_FOCUSED_WINDOW);
+		// 终端管理
+		menu_item_terminal_mgr.registerKeyboardAction(new ActionListener() {  
+			public void actionPerformed(ActionEvent e) {  
+				menu_item_terminal_mgr.doClick();
+			}  
+		}, KeyStroke.getKeyStroke(KeyEvent.VK_M, InputEvent.CTRL_DOWN_MASK), JComponent.WHEN_IN_FOCUSED_WINDOW);
+		// 对照表信息
+		menu_item_terminal_table.registerKeyboardAction(new ActionListener() {  
+			public void actionPerformed(ActionEvent e) {  
+				menu_item_terminal_table.doClick();
+			}  
+		}, KeyStroke.getKeyStroke(KeyEvent.VK_I, InputEvent.CTRL_DOWN_MASK), JComponent.WHEN_IN_FOCUSED_WINDOW);
+		
+		
+		
 		setVisible(true);
 		if(null == server || server.isEmpty()) {
 			showSettingDialog();
