@@ -6,6 +6,7 @@ package com.cattsoft.collect.manage.ui;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
@@ -79,6 +80,8 @@ public class ShellInfoDialog extends JDialog {
 	
 	private JLabel lbl_result;
 	
+	private Window parent;
+	
 	/**
 	 * @param host
 	 * @param hostname
@@ -86,8 +89,9 @@ public class ShellInfoDialog extends JDialog {
 	 * @param folder
 	 * @param otype 操作类型 - 重启(restart), 停止(stop)
 	 */
-	public ShellInfoDialog(String host, String hostname, Object[] type, String folder, String otype) {
+	public ShellInfoDialog(Window parent, String host, String hostname, Object[] type, String folder, String otype) {
 		setTitle(("操作确认" + ((null != hostname) ? " - " + hostname : "")));
+		this.parent = parent;
 		this.host = host;
 		this.hostname = hostname;
 		this.type = type;
@@ -304,6 +308,9 @@ public class ShellInfoDialog extends JDialog {
 							enabledControls(true);
 						} else {
 							close();
+							if(null != parent) {
+								UIUtils.dispatchCloseEvent(parent);
+							}
 						}
 					}
 				} catch (Exception e) {

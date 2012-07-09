@@ -45,7 +45,7 @@ public class MonitorStatusOperate extends JDialog {
 	
 	private void execute(String type) {
 		UIUtils.dispatchCloseEvent(this);
-		new ShellInfoDialog(status.getAddress(), status.getName(), new String[]{status.getType()}, status.getCatalog(), type);
+		new ShellInfoDialog(null, status.getAddress(), status.getName(), new String[]{status.getType()}, status.getCatalog(), type);
 	}
 	
 	private void stop() {

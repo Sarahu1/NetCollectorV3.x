@@ -119,7 +119,7 @@ public class ManagerBoard extends JFrame {
 		menu_item_terminal_mgr.setToolTipText("启动/停止终端程序");
 		menu_item_terminal_mgr.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				new ShellInfoDialog("", null, null, null, null);
+				new ShellInfoDialog(null, "", null, null, null, null);
 			}
 		});
 		menu_item_terminal_upload = new JMenuItem("上传(U)");

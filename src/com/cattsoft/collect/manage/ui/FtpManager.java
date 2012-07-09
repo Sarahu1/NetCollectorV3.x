@@ -4,6 +4,7 @@
 package com.cattsoft.collect.manage.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -69,6 +70,12 @@ public class FtpManager extends JFrame {
 	private JMenu menu_terminal_item = null;
 	/*** 窗口关闭菜单项 */
 	private JMenuItem menu_close_item = null;
+	/*** 清除 */
+	private JMenuItem menu_clear = null;
+	/*** 窗口菜单上传重试项 */
+	private JMenuItem menu_upload_retry = null;
+	/*** 窗口标题 */
+	private String winTitle = "";
 	
 	/**
 	 * @param rootDirectory 根目录
@@ -103,6 +110,7 @@ public class FtpManager extends JFrame {
 	
 	private void init() {
 		setTitle("FTP上传 - " + hostname);
+		winTitle = getTitle();
 		setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 		pack();
 		setSize(640, 480);
@@ -126,7 +134,7 @@ public class FtpManager extends JFrame {
 		// 输出面板右键菜单
 		
 		menu_operate = new JPopupMenu("管理");
-		JMenuItem menu_clear = new JMenuItem("清除(C)");
+		menu_clear = new JMenuItem("清除(C)");
 		menu_clear.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				// 清空内容
@@ -134,6 +142,19 @@ public class FtpManager extends JFrame {
 				outputPanel.setText("");
 			}
 		});
+		
+		menu_upload_retry = new JMenuItem("重新上传");
+		menu_upload_retry.setEnabled(false);
+		menu_upload_retry.setToolTipText("重新尝试上传文件");
+		menu_upload_retry.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				menu_clear.doClick();
+				menu_upload_retry.setEnabled(false);
+				// 上传
+				initUpload();
+			}
+		});
+		
 		// 终端项
 		menu_terminal_item = new JMenu("终端(T)");
 		// 不可用
@@ -141,10 +162,12 @@ public class FtpManager extends JFrame {
 		menu_terminal_item.setMnemonic('t');
 		JMenuItem menu_terminal_restart = new JMenuItem("重启(R)");
 		menu_terminal_restart.setMnemonic('r');
+		
+		final Window parent = this;
 		menu_terminal_restart.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				// 重启服务对话框
-				new ShellInfoDialog(ftp.getHost(), hostname, null, rootDirectory, ShellInfoDialog.OperateType.RESTART);
+				new ShellInfoDialog(parent, ftp.getHost(), hostname, null, rootDirectory, ShellInfoDialog.OperateType.RESTART);
 			}
 		});
 		JMenuItem menu_terminal_stop = new JMenuItem("停止(S)");
@@ -152,7 +175,7 @@ public class FtpManager extends JFrame {
 		menu_terminal_stop.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				// 停止服务对话框
-				new ShellInfoDialog(ftp.getHost(), hostname, null, rootDirectory, ShellInfoDialog.OperateType.STOP);
+				new ShellInfoDialog(parent, ftp.getHost(), hostname, null, rootDirectory, ShellInfoDialog.OperateType.STOP);
 			}
 		});
 		menu_terminal_item.add(menu_terminal_restart);
@@ -167,6 +190,8 @@ public class FtpManager extends JFrame {
 		});
 		// 菜单项
 		menu_operate.add(menu_clear);
+		menu_operate.addSeparator();
+		menu_operate.add(menu_upload_retry);
 		menu_operate.addSeparator();
 		menu_operate.add(menu_terminal_item);
 		menu_operate.addSeparator();
@@ -183,9 +208,17 @@ public class FtpManager extends JFrame {
 		});
 		
 		UIUtils.addEscapeListener(this);
-		UIUtils.setCenter(this);
+		// UIUtils.setCenter(this);
 		setVisible(true);
 		
+		// 初始化上传
+		initUpload();
+	}
+	
+	/**
+	 * 初始化并上传
+	 */
+	private void initUpload() {
 		try {
 			String currentDirectory = ftp.printWorkingDirectory();
 			
@@ -282,6 +315,7 @@ public class FtpManager extends JFrame {
 					if (((round_process - preProcess) >= 10)
 							&& (round_process % 10 == 0)) {
 						preProcess = round_process;
+						setTitle(winTitle + " " + round_process + "% " + file.getName());
 						out("文件<b>"+file.getName()+"</b>上传进度:<b>"+round_process+"%</b>", round_process == 100);
 					}
 				}
@@ -390,6 +424,8 @@ public class FtpManager extends JFrame {
 		}
 		// 标记完成
 		uploading = false;
+		setTitle(winTitle);
+		menu_upload_retry.setEnabled(true);
 	}
 	
 	/**

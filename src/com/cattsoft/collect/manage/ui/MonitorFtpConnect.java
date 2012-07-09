@@ -424,7 +424,7 @@ public class MonitorFtpConnect extends JDialog {
 												JOptionPane.WARNING_MESSAGE);
 								if(flag == JOptionPane.YES_OPTION) {
 									try {
-										ftp.mkdir(folder);
+										ftp.mkdir(folder.endsWith("/") ? (folder + "/") : folder);
 										ftp.cwd(folder);
 									} catch (Exception e2) {
 										JOptionPane.showMessageDialog(null, "创建目录失败!请手动在服务器上创建该工作目录!", "目录创建", JOptionPane.ERROR_MESSAGE);

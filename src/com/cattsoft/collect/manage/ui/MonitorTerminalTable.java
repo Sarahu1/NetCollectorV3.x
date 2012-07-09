@@ -46,7 +46,7 @@ public class MonitorTerminalTable extends JFrame {
 		menu_item_mgr = new JMenuItem("终端管理");
 		menu_item_mgr.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				new ShellInfoDialog(table.getValueAt(table.getSelectedRow(), 2)
+				new ShellInfoDialog(null, table.getValueAt(table.getSelectedRow(), 2)
 						.toString(), table
 						.getValueAt(table.getSelectedRow(), 1).toString(),
 						null, "", null);
