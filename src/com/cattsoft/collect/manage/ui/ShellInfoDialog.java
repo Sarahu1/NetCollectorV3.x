@@ -31,6 +31,7 @@ import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
 
 import com.cattsoft.collect.io.net.ssh.SSHShell;
+import com.cattsoft.collect.io.net.ssh.jsch.JSchException;
 import com.cattsoft.collect.manage.data.ConfigUtils;
 import com.cattsoft.collect.manage.data.EncryptUtil;
 import com.cattsoft.collect.manage.logging.LogManager;
@@ -271,55 +272,68 @@ public class ShellInfoDialog extends JDialog {
 	 * @param rootpwd
 	 * @param folder
 	 */
-	public void execute(String host, String username, String password, String rootpwd, String folder) {
+	public void execute(String host, String username, String password, final String rootpwd, String folder) {
 		try {
 			if(host.isEmpty() || username.isEmpty() || password.isEmpty() || folder.isEmpty())
 				return;
 		} catch (Exception e) {
 		}
 		enabledControls(false);
-		shell = new SSHShell(host, null , null);
-		shell.setHost(host);
-		shell.setUser(username);
-		shell.setUserpwd(password);
-		shell.setRootpwd(rootpwd);
+		shell = new SSHShell(host, username , password, "GBK");
+		shell.setClean(true);
 		// 添加 cd 目录命令
-		shell.setCommands(commands);
+//		shell.setCommands(commands);
 		new Thread(new Runnable() {
 			public void run() {
 				try {
 					complete = false;
-					setLblResult("正在执行..");
-					// 执行
-					shell.execute();
-					setLblResult(shell.getLastOut());
-					out("<b>命令已成功执行!</b></br>" + shell.getLastOut());
-					logger.info("命令结果:\n" + shell.getLastOut());
-					complete = true;
-					if (null != type && type.length == 1) {
-						JOptionPane.showMessageDialog(null, "当前命令已成功执行完成!");
-						close();
-					} else {
-						int flag = JOptionPane.showConfirmDialog(null,
-								"当前命令已成功执行完成!是否继续其它操作?", "执行成功",
-								JOptionPane.YES_NO_OPTION,
-								JOptionPane.INFORMATION_MESSAGE);
-						if (flag == JOptionPane.YES_OPTION) {
-							enabledControls(true);
-						} else {
+					setLblResult("正在连接服务器..");
+					if(shell.connect()) {
+						setLblResult("服务器连接成功");
+						
+						setLblResult("登录ROOT用户");
+						if(!shell.su(rootpwd)) {
+							throw new JSchException("切换ROOT用户失败!请检查密码是否正确");
+						}
+						setLblResult("正在执行..");
+						
+						// 执行
+						int code = shell.execute(commands.toArray(new String[commands.size()]), true);
+						setLblResult(shell.getLastResponse());
+						
+						// 是否为0
+						if(code != 0) {
+							throw new  JSchException("命令执行失败!");
+						}
+						out("<b>命令已成功执行!</b></br>" + shell.getLastResponse());
+						logger.info("命令结果:\n" + shell.getLastResponse());
+						complete = true;
+						if (null != type && type.length == 1) {
+							JOptionPane.showMessageDialog(null, "当前命令已成功执行完成!");
 							close();
-							if(null != parent) {
-								UIUtils.dispatchCloseEvent(parent);
+						} else {
+							int flag = JOptionPane.showConfirmDialog(null,
+									"当前命令已成功执行完成!是否继续其它操作?", "执行成功",
+									JOptionPane.YES_NO_OPTION,
+									JOptionPane.INFORMATION_MESSAGE);
+							if (flag == JOptionPane.YES_OPTION) {
+								enabledControls(true);
+							} else {
+								close();
+								if(null != parent) {
+									UIUtils.dispatchCloseEvent(parent);
+								}
 							}
 						}
 					}
 				} catch (Exception e) {
-					setLblResult(shell.getLastOut());
+					setLblResult(shell.getLastResponse());
 					JOptionPane.showMessageDialog(
 							null,
 							("主机" + (null != hostname ? hostname : "") + "("
 									+ shell.getHost() + ")执行命令操作失败!以下为详细信息:\n" + shell
-									.getLastOut()), ("操作失败 - " + (null != hostname ? hostname : txtHost.getText())),
+									.getLastResponse() + (null != e.getMessage() ? e.getMessage() : "")), 
+									("操作失败 - " + (null != hostname ? hostname : txtHost.getText())),
 							JOptionPane.ERROR_MESSAGE);
 					Point center = new Point();
 					center.x = (int) Toolkit.getDefaultToolkit().getScreenSize().getWidth() / 2 - getWidth() / 2;
@@ -329,7 +343,7 @@ public class ShellInfoDialog extends JDialog {
 					enabledControls(true);
 				} finally {
 					// 关闭
-					shell.close();
+					shell.disconnect();
 					complete = true;
 				}
 			}
@@ -341,8 +355,8 @@ public class ShellInfoDialog extends JDialog {
 		if(!complete) {
 			int flag = JOptionPane.showConfirmDialog(null, "操作尚未完成,是否中断进程?", "确认", JOptionPane.WARNING_MESSAGE, JOptionPane.YES_NO_OPTION);
 			if(flag == JOptionPane.YES_OPTION) {
-				// 
-				shell.close();
+				// 断开连接
+				shell.disconnect();
 			} else {
 				return;
 			}
@@ -367,7 +381,7 @@ public class ShellInfoDialog extends JDialog {
 	protected void processWindowEvent(WindowEvent e) {
 		if (e.getID() == WindowEvent.WINDOW_CLOSING) {
 			if(null != shell) {
-				shell.close();
+				shell.disconnect();
 			}
 		}
 		super.processWindowEvent(e);

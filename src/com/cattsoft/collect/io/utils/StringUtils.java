@@ -320,4 +320,120 @@ public class StringUtils {
     public static String newStringUtf8(byte[] bytes) {
         return StringUtils.newString(bytes, CharEncoding.UTF_8);
     }
+    
+    /**
+     * <p>Checks if a CharSequence is empty ("") or null.</p>
+     *
+     * <pre>
+     * StringUtils.isEmpty(null)      = true
+     * StringUtils.isEmpty("")        = true
+     * StringUtils.isEmpty(" ")       = false
+     * StringUtils.isEmpty("bob")     = false
+     * StringUtils.isEmpty("  bob  ") = false
+     * </pre>
+     *
+     * <p>NOTE: This method changed in Lang version 2.0.
+     * It no longer trims the CharSequence.
+     * That functionality is available in isBlank().</p>
+     *
+     * @param cs  the CharSequence to check, may be null
+     * @return {@code true} if the CharSequence is empty or null
+     * @since 3.0 Changed signature from isEmpty(String) to isEmpty(CharSequence)
+     */
+    public static boolean isEmpty(CharSequence cs) {
+        return cs == null || cs.length() == 0;
+    }
+
+    /**
+     * <p>Checks if a CharSequence is not empty ("") and not null.</p>
+     *
+     * <pre>
+     * StringUtils.isNotEmpty(null)      = false
+     * StringUtils.isNotEmpty("")        = false
+     * StringUtils.isNotEmpty(" ")       = true
+     * StringUtils.isNotEmpty("bob")     = true
+     * StringUtils.isNotEmpty("  bob  ") = true
+     * </pre>
+     *
+     * @param cs  the CharSequence to check, may be null
+     * @return {@code true} if the CharSequence is not empty and not null
+     * @since 3.0 Changed signature from isNotEmpty(String) to isNotEmpty(CharSequence)
+     */
+    public static boolean isNotEmpty(CharSequence cs) {
+        return !StringUtils.isEmpty(cs);
+    }
+    
+    /**
+     * <p>Compares two CharSequences, returning {@code true} if they are equal.</p>
+     *
+     * <p>{@code null}s are handled without exceptions. Two {@code null}
+     * references are considered to be equal. The comparison is case sensitive.</p>
+     *
+     * <pre>
+     * StringUtils.equals(null, null)   = true
+     * StringUtils.equals(null, "abc")  = false
+     * StringUtils.equals("abc", null)  = false
+     * StringUtils.equals("abc", "abc") = true
+     * StringUtils.equals("abc", "ABC") = false
+     * </pre>
+     *
+     * @see java.lang.String#equals(Object)
+     * @param cs1  the first CharSequence, may be null
+     * @param cs2  the second CharSequence, may be null
+     * @return {@code true} if the CharSequences are equal, case sensitive, or
+     *  both {@code null}
+     * @since 3.0 Changed signature from equals(String, String) to equals(CharSequence, CharSequence)
+     */
+    public static boolean equals(CharSequence cs1, CharSequence cs2) {
+        return cs1 == null ? cs2 == null : cs1.equals(cs2);
+    }
+
+    /**
+     * <p>Compares two CharSequences, returning {@code true} if they are equal ignoring
+     * the case.</p>
+     *
+     * <p>{@code null}s are handled without exceptions. Two {@code null}
+     * references are considered equal. Comparison is case insensitive.</p>
+     *
+     * <pre>
+     * StringUtils.equalsIgnoreCase(null, null)   = true
+     * StringUtils.equalsIgnoreCase(null, "abc")  = false
+     * StringUtils.equalsIgnoreCase("abc", null)  = false
+     * StringUtils.equalsIgnoreCase("abc", "abc") = true
+     * StringUtils.equalsIgnoreCase("abc", "ABC") = true
+     * </pre>
+     *
+     * @param str1  the first CharSequence, may be null
+     * @param str2  the second CharSequence, may be null
+     * @return {@code true} if the CharSequence are equal, case insensitive, or
+     *  both {@code null}
+     * @since 3.0 Changed signature from equalsIgnoreCase(String, String) to equalsIgnoreCase(CharSequence, CharSequence)
+     */
+    public static boolean equalsIgnoreCase(CharSequence str1, CharSequence str2) {
+        if (str1 == null || str2 == null) {
+            return str1 == str2;
+        } else {
+            return regionMatches(str1, true, 0, str2, 0, Math.max(str1.length(), str2.length()));
+        }
+    }
+    
+    /**
+     * Green implementation of regionMatches.
+     *
+     * @param cs the {@code CharSequence} to be processed
+     * @param ignoreCase whether or not to be case insensitive
+     * @param thisStart the index to start on the {@code cs} CharSequence
+     * @param substring the {@code CharSequence} to be looked for
+     * @param start the index to start on the {@code substring} CharSequence
+     * @param length character length of the region
+     * @return whether the region matched
+     */
+    public static boolean regionMatches(CharSequence cs, boolean ignoreCase, int thisStart,
+            CharSequence substring, int start, int length)    {
+        if (cs instanceof String && substring instanceof String) {
+            return ((String) cs).regionMatches(ignoreCase, thisStart, (String) substring, start, length);
+        } else {
+            return cs.toString().regionMatches(ignoreCase, thisStart, substring.toString(), start, length);
+        }
+    }
 }

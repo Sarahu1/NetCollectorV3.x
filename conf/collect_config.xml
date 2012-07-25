@@ -11,9 +11,9 @@
 	<bean id="ftp" class="com.cattsoft.collect.io.net.ftp.FTPTask">
 		<constructor-arg index="0">
 			<!-- FTP 传输方式 -->
-			<!-- FTP: com.cattsoft.collect.io.net.ftp.client.NFTPClient 端口:21-->
+			<!-- FTP:  com.cattsoft.collect.io.net.ftp.client.NFTPClient 端口:21-->
 			<!-- SFTP: com.cattsoft.collect.io.net.ftp.client.SFTPClient 端口:22-->
-			<bean class="com.cattsoft.collect.io.net.ftp.client.NFTPClient">
+			<bean class="com.cattsoft.collect.io.net.ftp.client.SFTPClient">
 				<constructor-arg index="0" value="${collect.ftp.host}"/>
 				<constructor-arg index="1" value="${collect.ftp.port}"/>
 				<constructor-arg index="2" value="${collect.ftp.username}"/>

@@ -269,6 +269,10 @@ public class CommandActuator extends Actuator {
 									dataIndex);
 						}
 					}
+				} catch (InterruptedException e) {
+					// 线程中断
+					// 恢复中断状态,以免剥夺中断请求的调用者的权利
+					Thread.currentThread().interrupt();
 				} catch (Exception e) {
 					// 数据处理线程启动失败,将无法处理进程数据
 					logger.error(

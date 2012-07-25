@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 public class ReportStatisticsWorker implements Runnable {
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	private List<ServerDataEvent> queue = new LinkedList<ServerDataEvent>();
-	// 缓存数据
+	// 缓存数据, 键值为监测点编号
 	private Map<String, Map<String ,String>> cache = new HashMap<String, Map<String ,String>>();  
 	/*** 忙时数据缓存,与常规数据区分 */
 	private Map<String, Map<String ,String>> cache_daily = new HashMap<String, Map<String ,String>>();
@@ -51,7 +51,7 @@ public class ReportStatisticsWorker implements Runnable {
 	/*** 数据超时时长(分钟) */
 	private long timeout = 10;
 	/*** 已进行注册的客户端列表 */
-	private Set<SelectionKey> channels = new LinkedHashSet<SelectionKey>();
+	private Set<ServerDataEvent> channels = new LinkedHashSet<ServerDataEvent>();
 	/*** 当前状态数据 */
 	private StringBuffer statusBuffer = new StringBuffer();
 	/*** 监测点数据 */
@@ -102,12 +102,12 @@ public class ReportStatisticsWorker implements Runnable {
 		try {
 			hook = new Thread(new Runnable() {
 				public void run() {
-					Iterator<SelectionKey> iterators =  channels.iterator();
+					Iterator<ServerDataEvent> iterators =  channels.iterator();
 					// 关闭已连接的客户端
 					while(iterators.hasNext()) {
 						try {
 							// 关闭
-							iterators.next().channel().close();
+							iterators.next().key.channel().close();
 							// 移除
 							iterators.remove();
 						} catch (IOException e) {
@@ -161,11 +161,18 @@ public class ReportStatisticsWorker implements Runnable {
 				}
 				dataEvent = (ServerDataEvent) queue.remove(0);
 				try {
-					String data = new String(dataEvent.data);
+					String[] data = new String(dataEvent.data).split(",");
 					// 是否为注册
-					if("register".equals(data)) {
+					if("register".equals(data[0])) {
+						if(data.length > 1) {
+							try {
+								// 推送间隔
+								dataEvent.pushInterval = Long.parseLong(data[1]);
+							} catch (Exception e) {
+							}
+						}
 						// 添加到列表,数据推送更新
-						channels.add(dataEvent.key);
+						channels.add(dataEvent);
 						try {
 							// 写出文件缓存数据至当前客户端
 							writeGather(dataEvent);
@@ -173,14 +180,14 @@ public class ReportStatisticsWorker implements Runnable {
 							logger.error("向客户端发送数据时出现异常!{}", e.toString());
 						}
 						continue; // 结束流程
-					} else if("disconnect".equals(data)) {
+					} else if("disconnect".equals(data[0])) {
 						// 断开
 						try {
 							((SocketChannel)dataEvent.key.channel()).close();
 						} catch (Exception e) {
 						}
 						synchronized (channels) {
-							channels.remove(dataEvent.key);
+							channels.remove(dataEvent);
 						}
 					} else {
 						// 处理数据
@@ -306,23 +313,30 @@ public class ReportStatisticsWorker implements Runnable {
 	private synchronized void flush() {
 		// 根据监测点编号排序
 		String[] monis = monitors.toArray(new String[]{});
-		Arrays.sort(monis);
+		int[] int_monitors = new int[monis.length];
+		try {
+			// 转为 int 类型后进行排序操作
+			for (int i = 0; i < monis.length; i++)
+				int_monitors[i] = Integer.parseInt(monis[i]);
+		} catch (Exception e) {
+		}
+		Arrays.sort(int_monitors);
 		statusBuffer = new StringBuffer("MONI\tNAME\tADDRESS\tTYPE\tUSER\tPID\t%CPU\t%MEM\tVSZ\tRSS\tSTAT\tSTART\tTIME\tVERSION\tUPDATE\tCOMMAND\tDATE\tCATALOG").append(LINE_SEPARATOR);
-		for (String monitor : monis) {
-			Map<String, String> values_map = cache.get(monitor);
+		for (int monitor : int_monitors) {
+			Map<String, String> values_map = cache.get(String.valueOf(monitor));
 			// 常规数据
 			if(null != values_map) {
-				appendComboStatus(monitor, values_map, cache);
+				appendComboStatus(String.valueOf(monitor), values_map, cache);
 			}
 			// 忙时数据
-			if(null != cache_daily.get(monitor)) {
-				values_map = cache_daily.get(monitor);
-				appendComboStatus(monitor, values_map, cache_daily);
+			if(null != cache_daily.get(String.valueOf(monitor))) {
+				values_map = cache_daily.get(String.valueOf(monitor));
+				appendComboStatus(String.valueOf(monitor), values_map, cache_daily);
 			}
 			// 未找到数据,表明该监测点已没有数据
 			try {
 				if(null == values_map)
-					monitors.remove(monitor);
+					monitors.remove(String.valueOf(monitor));
 			} catch (Exception e) {
 				logger.error("移除已停止的采集点状态数据失败,部分数据已失效!");
 			}
@@ -345,15 +359,22 @@ public class ReportStatisticsWorker implements Runnable {
 			}
 		}
 		// 向已注册的客户端写入数据
-		Iterator<SelectionKey> iterators =  channels.iterator();
+		Iterator<ServerDataEvent> iterators =  channels.iterator();
 		SelectionKey key;
 		SocketChannel channel;
+		ServerDataEvent event;
 		while(iterators.hasNext()) {
-			key = iterators.next();
+			event = iterators.next();
+			key = event.key;
 			channel = (SocketChannel)key.channel();
 			try {
 				// 判断连接状态
 				if(channel.isConnected()) {
+					// 判断推送时间间隔设置
+					if(event.pushInterval > 0 &&
+							((System.currentTimeMillis() - event.lastPush) < event.pushInterval)) {
+						continue;
+					}
 					// 设置数据发送缓存区大小
 					channel.socket().setSendBufferSize(8192);
 					// 数据进行编码后通过Socket写出到数据通道
@@ -363,6 +384,7 @@ public class ReportStatisticsWorker implements Runnable {
 						channel.socket().getOutputStream().flush();
 					} catch (Exception e) {
 					}
+					event.lastPush = System.currentTimeMillis();
 					key.interestOps(SelectionKey.OP_READ);
 				} else {
 					// 从列表中删除已断开的连接
@@ -430,6 +452,10 @@ class ServerDataEvent {
 	Selector selector;
 	SelectionKey key;
 	byte[] data;
+	/*** 数据推送间隔 */
+	long pushInterval;
+	/*** 最后推送时间 */
+	long lastPush;
 	
 	public ServerDataEvent(CollectorReportStatistics server, Selector selector, SelectionKey key, byte[] data) {
 		this.server = server;

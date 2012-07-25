@@ -3,7 +3,6 @@
  */
 package com.cattsoft.collect.net.adapter;
 
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -79,9 +78,8 @@ public abstract class BaseAdaptor extends BaseListener {
 	 */
 	protected void initDictionary(String config) {
 		dictionary.put("newline", line_separator);
-		SimpleDateFormat sdf = new SimpleDateFormat();
-		sdf.applyPattern("yyyy-MM-dd");
-		dictionary.put("date", sdf.format(System.currentTimeMillis()));
+		dictionary.put("date", DATE_SDF.format(System.currentTimeMillis()));
+		dictionary.put("datetime", DATETIME_SDF.format(System.currentTimeMillis()));
 	}
 
 	/**

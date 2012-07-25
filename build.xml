@@ -163,6 +163,21 @@
 				<attribute name="Main-Class" value="com.cattsoft.collect.io.file.merge.FileMergeTask" />
 			</manifest>
 		</jar>
+		
+		<!-- IO工具打包 -->
+		<jar jarfile="${dist.dir}/collector_io_${project.version}.jar" basedir="${build.dir}">
+			<!-- 网络传输模块 -->
+			<include name="**/io/net/**" />
+			<!-- ZIP文件操作模块 -->
+			<include name="**/io/file/archive/**" />
+			<!-- 文件操作工具类 -->
+			<include name="**/io/utils/**" />
+			<manifest>
+				<attribute name="Built-By" value="${built-by}" />
+				<!-- 程序入口方法-->
+				<attribute name="Main-Class" value="com.cattsoft.collect.io.file.merge.FileMergeTask" />
+			</manifest>
+		</jar>
 
 		<!-- 源文件打包 -->
 		<jar jarfile="${dist.dir}/${jar.name}-src.jar" basedir="${src.dir}">

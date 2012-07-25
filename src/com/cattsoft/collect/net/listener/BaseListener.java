@@ -4,6 +4,7 @@
 package com.cattsoft.collect.net.listener;
 
 import java.lang.reflect.Method;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.EventListener;
 
@@ -37,7 +38,15 @@ public abstract class BaseListener implements EventListener {
 	/*** 任务完成事件标记*/
 	public final static String DONE_TAG = "DONE";
 	/*** 换行符*/
-	protected final String line_separator = System.getProperty("line.separator", "\r");
+	protected final String line_separator = System.getProperty("line.separator", "\n");
+	// 日期时间格式化
+	/*** 日期 yyyy-MM-dd*/
+	public static final SimpleDateFormat DATE_SDF = new SimpleDateFormat("yyyy-MM-dd");
+	/*** 时间 HH:mm:ss*/
+	public static final SimpleDateFormat TIME_SDF = new SimpleDateFormat("HH:mm:ss");
+	/*** 日期时间 yyyy-MM-dd HH:mm:ss*/
+	public static final SimpleDateFormat DATETIME_SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
 	/**
 	 * 开始事件
 	 */
@@ -58,25 +67,25 @@ public abstract class BaseListener implements EventListener {
 	 * 完成
 	 */
 	public void finish() {}
-	
+
 	/**
 	 * 完成事件之后
 	 */
 	public void afterFinish() {}
-	
-	
+
+
 	/** 传输文件.
 	 * @param path 数据文件路径
 	 * @param backup 是否进行备份
 	 */
 	public void transport(String path, boolean backup) {}
-	
+
 	/** 特殊完成事件.
 	 * 用于当一个采集周期完成时发送通知事件.
 	 */
 	public void complete() {}
-	
-	
+
+
 	/**
 	 * 广播事件
 	 * @param event 事件名称
@@ -97,7 +106,7 @@ public abstract class BaseListener implements EventListener {
 			logger.error("Event broadcast failed! - event:{},params:{} - Error:" + exmsg, event.name, Arrays.toString(args));
 		}
 	}
-	
+
 
 	/**
 	 * 事件类型.

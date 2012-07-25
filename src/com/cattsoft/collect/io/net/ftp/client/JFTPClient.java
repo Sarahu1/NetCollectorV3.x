@@ -294,6 +294,8 @@ public class JFTPClient extends FTPClient {
 				} else {
 					// 设置续传断点
 					offset = tmpFileLength;
+					if(null != listener)
+						listener.setCompleteType(FtpTransferProcessListener.COMPLETE_HTTP);
 					logger.log(Logger.INFO, "服务器已存在该文件,续传断点位置:" + offset);
 				}
 			} catch (Exception e) {
@@ -315,6 +317,11 @@ public class JFTPClient extends FTPClient {
 					logger.log(Logger.INFO, "文件("+ directory + File.separator + file.getName() +")备份成功,备份路径:" + backupPath);
 				}
 			} else {
+				// 设置监听器传输完成类型为 文件已存在
+				if(null != listener) {
+					listener.setCompleteType(FtpTransferProcessListener.COMPLETE_EXISTS);
+					listener.complete();
+				}
 				logger.log(Logger.INFO, "在服务器中找到同名且长度相同文件(" +file.getName()+ "),完成上传");
 			}
 		} else {
@@ -596,6 +603,7 @@ public class JFTPClient extends FTPClient {
 			percent = this.length * 100 / total;
 			try {
 				if(null != listener) {
+					listener.transferred(length);
 					listener.process(percent);
 				} else {
 					logger.log(Logger.DEBUG, "文件传输进度:" + percent + "%");

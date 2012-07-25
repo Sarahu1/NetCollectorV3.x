@@ -4,7 +4,6 @@
 package com.cattsoft.collect.net.listener;
 
 import java.io.File;
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -64,7 +63,7 @@ public abstract class WriterListener extends BaseListener {
 	protected String regex;
 	/*** 是否启用写入器*/
 	protected boolean enabled = true;
-
+	
 	public WriterListener(String path, String expression) {
 		this.expression = expression;
 		this.path = path;
@@ -229,11 +228,8 @@ public abstract class WriterListener extends BaseListener {
 	 */
 	protected String expressionProcess(String result, String...values) {
 		String content = result;
-		SimpleDateFormat sdf = new SimpleDateFormat();
-		sdf.applyPattern("yyyy-MM-dd");
-		dictionary.put("date", sdf.format(System.currentTimeMillis()));
-		sdf.applyPattern("HH:mm:ss");
-		dictionary.put("time", sdf.format(System.currentTimeMillis()));
+		dictionary.put("date", DATE_SDF.format(System.currentTimeMillis()));
+		dictionary.put("time", TIME_SDF.format(System.currentTimeMillis()));
 		dictionary.put("result", content);
 		if(this.expression != null && !"".equals(expression)) {
 			//根据表达式处理数据

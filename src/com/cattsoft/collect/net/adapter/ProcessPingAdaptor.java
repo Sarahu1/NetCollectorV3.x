@@ -3,7 +3,6 @@
  */
 package com.cattsoft.collect.net.adapter;
 
-import java.text.SimpleDateFormat;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -61,7 +60,6 @@ public class ProcessPingAdaptor extends BaseAdaptor {
 		super.process(result);
 		if(null == result)
 			return result;
-		SimpleDateFormat sdf = new SimpleDateFormat();
 		//: 数据处理
 		this.dictionary.put("loss", "100"); //默认设置为最大值(100)
 		String purl = result.getParams()[0];
@@ -87,9 +85,9 @@ public class ProcessPingAdaptor extends BaseAdaptor {
 				this.dictionary.put("time", (null != result_matcher.group(time_index)) ? result_matcher.group(time_index) : "");
 				
 			}
-			//当前时间
-			sdf.applyPattern("HH:mm:ss");
-			this.dictionary.put("dtime", sdf.format(System.currentTimeMillis()));
+			// 当前日期时间
+			this.dictionary.put("date", DATE_SDF.format(System.currentTimeMillis()));
+			this.dictionary.put("dtime", TIME_SDF.format(System.currentTimeMillis()));
 			//丢失率
 			int loss = Integer.parseInt(this.dictionary.get("loss"));
 			if(loss <= maxLoss) {

@@ -386,7 +386,29 @@ public abstract class FTPClient implements FTP {
 	 * @return the logger
 	 */
 	public Logger getLogger(final Class<?> cls) {
-		return new FTPLogger(cls);
+		// 检测
+		boolean checked = true;
+		try {
+			// org.slf4j.Logger
+			ClassLoader.getSystemClassLoader().loadClass("org.slf4j.Logger");
+		} catch (Exception e) {
+			checked = false;
+		}
+		try {
+			// org.slf4j.Logger
+			ClassLoader.getSystemClassLoader().loadClass("java.util.logging.Logger");
+		} catch (Exception e) {
+			checked = false;
+		}
+		return checked ? new FTPLogger(cls) : new Logger() {
+			public void log(int level, String message) {
+				System.out.println(message);
+			}
+			@Override
+			public boolean isEnabled(int level) {
+				return true;
+			}
+		};
 	}
 	
 	/* (non-Javadoc)
@@ -437,7 +459,11 @@ public abstract class FTPClient implements FTP {
 			try {
 				sl4j_logger = LoggerFactory.getLogger(cls);
 			} catch (Error e) {
-				lang_logger = java.util.logging.Logger.getLogger(cls.getName());
+				try {
+					lang_logger = java.util.logging.Logger.getLogger(cls.getName());
+				} catch (Error e2) {
+					// 无法记录日志
+				}
 			}
 		}
 		
@@ -450,20 +476,26 @@ public abstract class FTPClient implements FTP {
 			case Logger.DEBUG:
 				if(null != sl4j_logger)
 					sl4j_logger.debug(message);
-				else
+				else if(null != lang_logger)
 					lang_logger.info(message);
+				else
+					System.out.println(message);
 				break;
 			case Logger.INFO:
 				if(null != sl4j_logger)
 					sl4j_logger.info(message);
-				else
+				else if(null != lang_logger)
 					lang_logger.info(message);
+				else
+					System.out.println(message);
 				break;
 			case Logger.ERROR:
 				if(null != sl4j_logger)
 					sl4j_logger.error(message);
-				else
+				else if(null != lang_logger)
 					lang_logger.severe(message);
+				else
+					System.out.println(message);
 				break;
 			default:
 				break;

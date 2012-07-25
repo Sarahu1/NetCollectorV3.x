@@ -240,6 +240,11 @@ public class SFTPClient extends FTPClient {
 			if(compared) {
 				// 文件验证成功
 				uploaded = true;
+				// 设置监听器传输完成类型为 文件已存在
+				if(null != listener) {
+					listener.setCompleteType(FtpTransferProcessListener.COMPLETE_EXISTS);
+					listener.complete();
+				}
 			} else if(backup) {
 				// 验证不通过,备份, 删除
 				// 备份
@@ -274,6 +279,8 @@ public class SFTPClient extends FTPClient {
 						offset = tmpAttrs.getSize();
 						// 传输模式为追加到文件
 						mode = ChannelSftp.APPEND;
+						if(null != listener)
+							listener.setCompleteType(FtpTransferProcessListener.COMPLETE_HTTP);
 						logger.log(Logger.INFO, "服务器已存在该文件,续传断点位置:" + offset);
 					}
 				}
@@ -689,6 +696,7 @@ public class SFTPClient extends FTPClient {
 			percent = this.length * 100 / total;
 			try {
 				if(null != listener) {
+					listener.transferred(length);
 					listener.process(percent);
 				} else {
 					if(op == SftpProgressMonitor.PUT) {
