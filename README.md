@@ -19,11 +19,11 @@
 * [logback-core-1.0.0.jar](http://logback.qos.ch/) -- `日志支持`
 * [quartz-all-1.8.6.jar](http://quartz-scheduler.org/) -- `作业调度`
 * [slf4j-api-1.6.4.jar](http://www.slf4j.org/) -- `日志支持`
-* [spring.jar](http://www.springsource.org/) -- `Spring配置`
+* [spring.jar](http://www.springsource.org/) -- `Spring支持`
 
 
 支持
-------------
+-------
 
 采集程序支持多个命令的运行,以下为已配置的常用命令.
 更多支持请添加配置更多的命令.
@@ -33,10 +33,10 @@
 
 系统命令
 
-1. dig xxx
-2. dig xxx +trace
-3. scamper -c "ping -c 10" -i xxx
-4. scamper -c "trace -P ICMP -M -l 5" -i xxx
+1.  dig xxx
+2.  dig xxx +trace
+3.  scamper -c "ping -c 10" -i xxx
+4.  scamper -c "trace -P ICMP -M -l 5" -i xxx
 
 
 管理
@@ -63,53 +63,93 @@ report代表监测点状态数据监控服务.
 ### 模块
 
 终端采集
------------
+-------
 * [collector_net_3.0.0.jar]
-详见部署说明
+
+目录结构如下
+
+* [conf] -- `配置目录`
+   * -- collect.properties  `常规任务配置`
+   * -- collect_config.xml  `Spring 配置文件`
+   * -- `其它all_url.txt/all_ip.txt/daily_ip.txt等数据文件`
+   * -- collect_daily.properties  `忙时任务配置`
+* [lib] -- `支持库`
+   * -- collector_net_3.0.0.jar  `采集模块`
+   * -- commons-logging-1.1.1.jar
+   * -- commons-net-3.1.jar
+   * -- logback-classic-1.0.0.jar
+   * -- logback-core-1.0.0.jar
+   * -- quartz-all-1.8.6.jar
+   * -- slf4j-api-1.6.4.jar
+   * -- spring.jar
+   * -- sunjce_provider.jar
+* -- logback.xml  `日志配置`
+* -- monitor  `监测点标识文件,文件内容为监测点编号`
+* -- monitor_map.cf  `监测点对照`
+* -- shell.sh  `管理脚本`
 
 
 文件同步
------------
+-------
 * [collector_sync_3.0.0.jar]
 
+目录结构如下
+
+* [conf] -- `配置目录`
+   * -- sync.properties  `同步配置文件`
+* [lib] -- `支持库`
+   * -- collector_sync_3.0.0.jar  `同步模块`
+   * -- commons-logging-1.1.1.jar
+   * -- commons-net-3.1.jar
+   * -- logback-classic-1.0.0.jar
+   * -- logback-core-1.0.0.jar
+   * -- slf4j-api-1.6.4.jar
+* -- logback.xml  `日志配置`
+* -- shell.sh  `管理脚本`
 
 
 文件合并
------------
+-------
 * [collector_merge_3.0.0.jar]
 
+目录结构如下
+
+* [conf] -- `配置目录`
+   * -- merge.properties  `合并配置文件`
+* [lib] -- `支持库`
+   * -- collector_merge_3.0.0.jar  `数据合并模块`
+   * -- commons-logging-1.1.1.jar
+   * -- logback-classic-1.0.0.jar
+   * -- logback-core-1.0.0.jar
+   * -- slf4j-api-1.6.4.jar
+* logback.xml -- `日志配置`
+* shell.sh -- `管理脚本`
+
+
+智能告警
+-------
+* [collector_alarm_3.0.0.jar]
+
+目录结构如下
 
 
 终端管理
------------
+-------
 * [collector_manage_3.0.0.jar]
+
 见使用说明
 
 
-终端采集部署
------------
-目录结构如下
-* [conf] -- `配置目录`
-    * `collect.properties -- 常规任务配置`
-    * `collect_daily.properties -- 忙时任务配置`
-    * `collect_config.xml -- Spring 配置文件`
-    * `其它all_url.txt/all_ip.txt等数据文件`
-* [lib] -- `支持库`
-* [monitor] -- `监测点标识文件,文件内容为监测点编号`
-* [logback.xml] -- `日志配置`
-* [shell.sh] -- `管理脚本`
-
-配置完成后使用`shell.sh`对程序进行启动/停止的管理
+#### 配置完成后使用`shell.sh`脚本文件对程序进行启动/停止的管理
 
 使用
------
-终端管理程序可直接启动,为可视化窗口程序
-若无法直接双击启动,可使用以下命令启动:
+-------
+终端管理程序可直接启动,为可视化窗口程序,若无法直接双击启动,可使用以下命令启动:
 
     javaw/java -jar collector_manage_3.0.0.jar
 
-javaw 启动方式无输出窗口
-java 命令启动方式会出现输出窗口,可用于查看日志
+> javaw 启动方式无输出窗口
+ java 命令启动方式会出现输出窗口,可用于查看日志
 
 
 测试
@@ -117,7 +157,7 @@ java 命令启动方式会出现输出窗口,可用于查看日志
 
 
 贡献
-------------
+-------
 
 1. ..
 

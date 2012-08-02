@@ -31,6 +31,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.cattsoft.collect.io.net.ssh.SSHShell;
+
 /** 状态上报数据处理.
  * 将数据处理为可识别的数据信息,并写入到文件.
  * @author ChenXiaohong
@@ -62,6 +64,8 @@ public class ReportStatisticsWorker implements Runnable {
 	private CharsetEncoder encoder;
 	/*** 数据流结束标识字符串 */
 	private String endTag = "---END---";
+	/*** 授权KEY */
+	private Set<String> app_keys = new HashSet<String>();
 	/*** 线程退出监听钩子线程 */
 	private Thread hook;
 	
@@ -72,7 +76,7 @@ public class ReportStatisticsWorker implements Runnable {
 		// 读取状态文件数据
 		statusBuffer = new StringBuffer("MONI\tADDRESS\tTYPE\tUSER\tPID\t%CPU\t%MEM\tVSZ\tRSS\tSTAT\tSTART\tTIME\tVERSION\tUPDATE\tCOMMAND\tDATE\tCATALOG");
 		monitors_map = new Properties();
-
+		app_keys.add("ad:c3:f2:75:44:3c:3a:32:50:5d:b2:bd:ea:65:af:be"); // 默认app_key
 		BufferedReader bf = null;
 		FileInputStream fis = null;
 		try {
@@ -180,6 +184,14 @@ public class ReportStatisticsWorker implements Runnable {
 							logger.error("向客户端发送数据时出现异常!{}", e.toString());
 						}
 						continue; // 结束流程
+					} else if("monitor_mgr".equals(data[0])) {
+						// 监测点管理
+						try {
+							handlerMonitor(dataEvent);
+						} catch (Exception e) {
+							logger.error("监测点管理过程出现异常!", e);
+						}
+						continue;
 					} else if("disconnect".equals(data[0])) {
 						// 断开
 						try {
@@ -371,10 +383,9 @@ public class ReportStatisticsWorker implements Runnable {
 				// 判断连接状态
 				if(channel.isConnected()) {
 					// 判断推送时间间隔设置
-					if(event.pushInterval > 0 &&
-							((System.currentTimeMillis() - event.lastPush) < event.pushInterval)) {
+					if (event.pushInterval > 0
+							&& (System.currentTimeMillis() - event.lastPush) < event.pushInterval)
 						continue;
-					}
 					// 设置数据发送缓存区大小
 					channel.socket().setSendBufferSize(8192);
 					// 数据进行编码后通过Socket写出到数据通道
@@ -443,6 +454,65 @@ public class ReportStatisticsWorker implements Runnable {
 			return endTag;
 		} else {
 			return cs.toString() + endTag;
+		}
+	}
+	
+	/**
+	 * 监测点管理
+	 */
+	private void handlerMonitor(ServerDataEvent event) {
+		// 参数列表
+		String[] params = new String(event.data).split(",");
+		SSHShell shell = new SSHShell(params[2], params[3], params[4], params[5]);
+		logger.info("正在检查授权信息..");
+		logger.info("app_key:" + params[1]);
+		int result = -1;
+		String response = "";
+		if(app_keys.contains(params[1])) {
+			try {
+				logger.info("正在连接监测点服务器("+shell.getHost()+")..");
+				// 连接服务器
+				if(shell.connect()) {
+					logger.info("正在登录root..");
+					shell.setClean(true);
+					if(shell.su(params[6])) {
+						logger.info("ROOT用户授权成功");
+						String[] commands = Arrays.asList(params).subList(7, params.length).toArray(new String[0]);
+						logger.info("正在执行命令:" + Arrays.toString(commands));
+						// 接收命令, 返回响应信息
+						result = shell.execute(commands, true);
+					} else {
+						// ROOT授权失败
+						result = 102;
+					}
+				} else {
+					// 连接或授权失败
+					result = 101;
+				}
+				response = shell.getLastResponse();
+			} catch(Exception e) {
+				if(e.getMessage().contains("timeout"))
+					result = 100;	// 连接超时
+				logger.error("监测点状态管理出现异常!", e);
+			}
+		} else {
+			// 授权失败
+			result = 404;
+			response = "Authorization failed";
+			logger.info("授权失败,无法服务." + params[1]);
+		}
+		logger.info("response:" + result);
+		try {
+			// 发回响应数据
+			SocketChannel channel = (SocketChannel)event.key.channel();
+			try {
+				channel.write(encoder.encode(CharBuffer.wrap(result + LINE_SEPARATOR + response)));
+				// 刷新缓冲区
+				channel.socket().getOutputStream().flush();
+			} catch (Exception e) {
+			}
+		} catch (Exception e) {
+			logger.error("监测点管理状态未能成功返回!", e);
 		}
 	}
 }

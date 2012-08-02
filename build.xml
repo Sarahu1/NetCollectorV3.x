@@ -164,6 +164,19 @@
 			</manifest>
 		</jar>
 		
+		<!-- 智能告警打包 -->
+		<jar jarfile="${dist.dir}/collector_alarm_${project.version}.jar" basedir="${build.dir}">
+			<!-- 告警模块主目录 -->
+			<include name="**/collect/alarm/**" />
+			<!-- 文件操作工具类 -->
+			<include name="**/io/utils/**" />
+			<manifest>
+				<attribute name="Built-By" value="${built-by}" />
+				<!-- 程序入口方法-->
+				<attribute name="Main-Class" value="com.cattsoft.collect.alarm.main.SmartAlarm" />
+			</manifest>
+		</jar>
+		
 		<!-- IO工具打包 -->
 		<jar jarfile="${dist.dir}/collector_io_${project.version}.jar" basedir="${build.dir}">
 			<!-- 网络传输模块 -->

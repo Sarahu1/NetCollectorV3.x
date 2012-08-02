@@ -3,9 +3,7 @@
  */
 package test;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.text.DecimalFormat;
 
 /**
  * @author 陈小鸿
@@ -14,16 +12,7 @@ import java.util.List;
  */
 public class TestIndex {
 	public static void main(String[] args) {
-		List<NetCollectionItem> items = new ArrayList<NetCollectionItem>();
-		items.add(new NetCollectionItem("北京联通", "常规"));
-		
-		NetCollectionItem item = new NetCollectionItem("北京联通", "常规");
-		
-		for (NetCollectionItem netCollectionItem : items) {
-			System.out.println(netCollectionItem.compareTo(item));
-		}
-		
-//		System.out.println(Collections.binarySearch(items, item, new NetCollectionItem()));;
-		System.out.println(items.indexOf(item));
+		DecimalFormat trafficDF = new DecimalFormat("0.0KB");
+		System.out.println(trafficDF.format(-1));
 	}
 }

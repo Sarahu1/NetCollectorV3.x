@@ -62,8 +62,8 @@ public class MonitorModel extends DefaultTableModel {
 				status.getAddress(),
 				status.getStat().replace("Sl", "正常"),
 				type,
-				status.getUpdate().replace("s", " second")
-						.replace("m", " minute") };
+				status.getUpdate().replace("s", " 秒前")
+						.replace("m", " 分钟前") };
 		for (int i = 0; i < status_list.size(); i++) {
 			MonitorStatus ms = status_list.get(i);
 			if(ms.getMonitor().trim().equalsIgnoreCase(status.getMonitor().trim())

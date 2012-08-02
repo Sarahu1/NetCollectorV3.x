@@ -105,6 +105,7 @@ public class SSHShell {
 				session.setPort(port);
 			session.setPassword(pswd);
 			session.setConfig("StrictHostKeyChecking", "no");
+			session.setTimeout(1000 * 10);
 			session.connect();
 			shell = (ChannelShell) session.openChannel("shell");
 
@@ -178,8 +179,6 @@ public class SSHShell {
 		
 		// 读取输出
 		readResponse();
-		
-		System.out.println(shell.getExitStatus());
 		
 		// 返回结束代码
 		return readExitCode();
@@ -301,6 +300,7 @@ public class SSHShell {
 	
 	public static void main(String[] args) throws JSchException {
 		SSHShell shell = new SSHShell("202.108.49.59", "collect", "Bb$4.b");
+		shell.setClean(true);
 		shell.connect();
 		
 		shell.su("DTTngoss9ol.0p;|");
@@ -308,5 +308,7 @@ public class SSHShell {
 		System.out.println(shell.execute("cd /home/collect/NetCollectorV3.0/"));;
 		
 		System.out.println(shell.getLastResponse());
+		
+		shell.disconnect();
 	}
 }
