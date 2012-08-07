@@ -5,7 +5,10 @@ package com.cattsoft.collect.io.utils;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.util.Map;
 import java.util.logging.Logger;
+
+import org.apache.commons.configuration.Configuration;
 
 /** 配置管理工具
  * @author ChenXiaohong
@@ -52,5 +55,12 @@ public class ConfigUtils {
 		} else {
 			logger.info("未找到配置文件");
 		}
+	}
+	
+	/**
+	 * 
+	 */
+	public static Map<String, Map<String, String>> toMap(Configuration config) {
+		return null;
 	}
 }
