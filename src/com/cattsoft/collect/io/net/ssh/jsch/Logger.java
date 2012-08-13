@@ -40,6 +40,8 @@ public interface Logger{
   public boolean isEnabled(int level);
 
   public void log(int level, String message);
+  
+  public void log(int level, String message, Exception e);
 
   /*
   public final Logger SIMPLE_LOGGER=new Logger(){

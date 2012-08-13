@@ -55,7 +55,7 @@ public class MonitorModel extends DefaultTableModel {
 		String type = status.getType();
 		type = ("daily".equalsIgnoreCase(type) ? "忙时" : ("permanent"
 				.equalsIgnoreCase(type) ? "常规" : ("report"
-				.equalsIgnoreCase(type) ? "统计" : type)));
+				.equalsIgnoreCase(type) ? "统计" : ("phase2".equalsIgnoreCase(type) ? "二期" : type))));
 		Object[] value = new Object[] {
 				monitor,
 				status.getName(),

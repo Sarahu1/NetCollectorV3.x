@@ -37,6 +37,7 @@ public class NFTPClient extends FTPClient {
 	 * 是否已登录
 	 */
 	private boolean logged = false;
+	
 	/**
 	 * @param hostname 主机地址
 	 * @param port 端口
@@ -461,6 +462,8 @@ public class NFTPClient extends FTPClient {
 	 */
 	@Override
 	public boolean cwd(String directory) throws FTPException {
+		if(null == directory)
+			return false;
 		try {
 			if(!ftp.changeWorkingDirectory(new String(directory.replaceAll("\\\\", "/").getBytes(), ftp.getControlEncoding())))
 				throw new FTPException("目录不存在!");

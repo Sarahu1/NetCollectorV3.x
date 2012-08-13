@@ -27,6 +27,8 @@ public class BasicFileReader extends BaseListener {
 	protected final String filePath;
 	/*** 断点记录文件路径*/
 	protected final String skipPath;
+	/*** 忽略注释,如果为true, 以<code>#</code>号开头的行将被忽略 */
+	protected boolean ignoreAnnotate = true;
 	/*** 是否删除数据文件*/
 	protected boolean deleteFile = false;
 	/*** 是否删除断点记录文件*/
@@ -72,6 +74,8 @@ public class BasicFileReader extends BaseListener {
 				while((line = lineReader.readLine()) != null) {
 					//当前行大于skip值且数据不为空,添加到数据列表
 					if((++curr_skip) > skip && !line.isEmpty()) {
+						if(isIgnoreAnnotate() && line.trim().startsWith("#"))
+							continue;
 						lines.add(line);
 					}
 				}
@@ -156,6 +160,20 @@ public class BasicFileReader extends BaseListener {
 	 */
 	public void setDoneTag(String tag) {
 		DONE_TAG = tag;
+	}
+	
+	/**
+	 * @param ignoreAnnotate the ignoreAnnotate to set
+	 */
+	public void setIgnoreAnnotate(boolean ignoreAnnotate) {
+		this.ignoreAnnotate = ignoreAnnotate;
+	}
+	
+	/**
+	 * @return the ignoreAnnotate
+	 */
+	public boolean isIgnoreAnnotate() {
+		return ignoreAnnotate;
 	}
 
 	/**

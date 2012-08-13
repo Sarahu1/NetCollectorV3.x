@@ -70,6 +70,12 @@ public abstract class FTPClient implements FTP {
 	 */
 	private String[] standbyHost = new String[]{};
 	
+	/**
+	 * 
+	 */
+	public FTPClient() {
+		// 
+	}
 
 	/* (non-Javadoc)
 	 * @see com.cattsoft.collect.transfer.ftp.FTP#connect(java.lang.String, int)
@@ -405,6 +411,10 @@ public abstract class FTPClient implements FTP {
 				System.out.println(message);
 			}
 			@Override
+			public void log(int level, String message, Exception e) {
+				System.err.println(message + e.getMessage());
+			}
+			@Override
 			public boolean isEnabled(int level) {
 				return true;
 			}
@@ -470,8 +480,9 @@ public abstract class FTPClient implements FTP {
 		public boolean isEnabled(int level) {
 			return true;
 		}
-
-		public void log(int level, String message) {
+		
+		@Override
+		public void log(int level, String message, Exception e) {
 			switch (level) {
 			case Logger.DEBUG:
 				if(null != sl4j_logger)
@@ -491,15 +502,19 @@ public abstract class FTPClient implements FTP {
 				break;
 			case Logger.ERROR:
 				if(null != sl4j_logger)
-					sl4j_logger.error(message);
+					sl4j_logger.error(message, e);
 				else if(null != lang_logger)
-					lang_logger.severe(message);
+					lang_logger.severe(message + e.getMessage());
 				else
-					System.out.println(message);
+					System.err.println(message);
 				break;
 			default:
 				break;
 			}
+		}
+
+		public void log(int level, String message) {
+			log(level, message, null);
 		}
 	}
 }

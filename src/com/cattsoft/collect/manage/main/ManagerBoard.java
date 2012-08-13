@@ -35,6 +35,7 @@ import com.cattsoft.collect.manage.data.MonitorStatus;
 import com.cattsoft.collect.manage.data.StatusGrab;
 import com.cattsoft.collect.manage.logging.LogManager;
 import com.cattsoft.collect.manage.ui.AboutDialog;
+import com.cattsoft.collect.manage.ui.ExportSetDialog;
 import com.cattsoft.collect.manage.ui.MonitorFtpConnect;
 import com.cattsoft.collect.manage.ui.MonitorModel;
 import com.cattsoft.collect.manage.ui.MonitorTable;
@@ -62,14 +63,21 @@ public class ManagerBoard extends JFrame {
 	private String server;
 	/*** 数据服务端口 */
 	private int port;
+	/*** 数据导出SQL */
+	private String sql;
+	/*** 数据导出路径*/
+	private String path;
 	/*** 服务设置对话框 */
 	private ServerSetDialog dialog = null;
+	/*** 数据导出对话框*/
+	private ExportSetDialog export = null;
 	
 	// 菜单项
 	private JMenuItem menu_item_set;
 	private JMenuItem menu_item_terminal_upload;
 	private JMenuItem menu_item_terminal_mgr;
 	private JMenuItem menu_item_terminal_table;
+	private JMenuItem menu_item_export;
 	
 	public ManagerBoard() {
 		super("云平台基础数据采集管理");
@@ -109,6 +117,15 @@ public class ManagerBoard extends JFrame {
 		menu_item_set.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent actionevent) {
 				showSettingDialog();
+			}
+		});
+		//文件导出
+		menu_item_export = new JMenuItem("文件导出(E)");
+		menu_item_export.setMnemonic('e');
+		menu_item_export.setToolTipText("文件导出服务");
+		menu_item_export.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent actionevent) {
+				showDateExport();
 			}
 		});
 		// 单独终端管理
@@ -158,6 +175,8 @@ public class ManagerBoard extends JFrame {
 		
 		// 文件
 		menu_file.add(menu_item_set);
+		menu_file.addSeparator();
+		menu_file.add(menu_item_export);
 		menu_file.addSeparator();
 		menu_file.add(menu_item_terminal);
 		menu_file.addSeparator();
@@ -238,6 +257,10 @@ public class ManagerBoard extends JFrame {
 				}
 			}
 		};
+		export = new ExportSetDialog(this, sql, path){
+			private static final long serialVersionUID = 1L;
+			
+		};
 		
 		// 热键注册
 		// 上传
@@ -264,7 +287,12 @@ public class ManagerBoard extends JFrame {
 				menu_item_terminal_table.doClick();
 			}  
 		}, KeyStroke.getKeyStroke(KeyEvent.VK_I, InputEvent.CTRL_DOWN_MASK), JComponent.WHEN_IN_FOCUSED_WINDOW);
-		
+		//文件导出
+		menu_item_export.registerKeyboardAction(new ActionListener() {  
+			public void actionPerformed(ActionEvent e) {  
+				menu_item_export.doClick();
+			}  
+		}, KeyStroke.getKeyStroke(KeyEvent.VK_E, InputEvent.CTRL_DOWN_MASK), JComponent.WHEN_IN_FOCUSED_WINDOW);
 		
 		
 		setVisible(true);
@@ -284,7 +312,13 @@ public class ManagerBoard extends JFrame {
 		UIUtils.setCenter(dialog);
 		dialog.setVisible(true);
 	}
-	
+	/**
+	 * 显示文件导出对话框
+	 */
+	public void showDateExport() {
+		UIUtils.setCenter(export);
+		export.setVisible(true);
+	}
 	/** 显示状态栏信息
 	 * @param tip 显示状态栏信息
 	 */

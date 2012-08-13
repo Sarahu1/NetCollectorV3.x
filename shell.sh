@@ -1,22 +1,27 @@
 #! /bin/base
 ## 执行脚本启动/停止/重启应用程序.
 ## 不支持多进程管理,运行前请检查进程状态
+## 为避免出现多个进程,建议使用重启(restart)命令
 ## 停止进程时将停止相应类型的所有进程
 ## chenxiaohong@mail.com
-## 2012/6/26
+## 2012/08/10
 
 #
 # Usage:
 # 常规采集启动/停止:
 # sh shell.sh [start/stop/kill] 分别为 启动/停止 程序命令
 # 忙时采集启动/停止:
-# sh shell.sh [start/stop/kill] [daily/busy] 启动停止忙时采集
+# sh shell.sh [start/stop/kill] [daily/busy] 启动/停止忙时采集
+# 二期采集启动/停止:
+# sh shell.sh [start/stop/kill] [phase2] 启动/停止二期采集
 # 监测服务启动/停止:
-# sh shell.sh [start/stop] [report/gather] 启动停止监测服务
+# sh shell.sh [start/stop] [report/gather] 启动/停止监测服务
 # 同步服务启动/停止:
-# sh shell.sh [start/stop] [sync/synchronize] 启动停止同步服务
+# sh shell.sh [start/stop] [sync/synchronize] 启动/停止同步服务
 # 合并服务启动/停止:
-# sh shell.sh [start/stop] [merge/compose] 启动停止合并服务
+# sh shell.sh [start/stop] [merge/compose] 启动/停止合并服务
+# 数据发布启动/停止:
+# sh shell.sh [start/stop] [merge/compose] 启动/停止数据发布服务
 # 停止程序 stop/kill:
 # sh shell.sh kill 与 sh shell stop 同为停止程序命令
 # 重启程序 restart:
@@ -32,13 +37,16 @@ config_property="conf/collect.properties"
 # 忙时采集程序属性配置文件路径
 # 启动类型为忙时采集时该值将替换config_property的值,并将替换config配置文件中的值
 config_daily_property="conf/collect_daily.properties"
+# 二期采集程序属性配置文件路径
+config_phase2_property="conf/collect_phase2.properties"
 # 应用程序标志
 app_label="netCollector"
-# 进程类型标识:常规(permanent)/忙时(daily)/报表(report)/同步(sync)/合并(merge)
+# 进程类型标识:常规(permanent)/忙时(daily)/二期(phase2)/报表(report)/同步(sync)/合并(merge)
 app_type="permanent"
 
 # 启动方法入口
 start() {
+    ## 用户权限检查
     permissionChecks;
     ## 内部判断启动进程类型
     case $app_type in
@@ -47,6 +55,10 @@ start() {
             start_basic;;
         "daily")
             start_busy;;
+        "phase2")
+            start_phase2;;
+        "publish")
+            start_publish;;
         "report")
             start_report;;
         "sync")
@@ -85,7 +97,7 @@ stop() {
     permissionChecks;
     ## 内部判断停止进程类型
     case $app_type in
-        "permanent" | "daily" | "report" | "sync" | "merge")
+        "permanent" | "daily" | "phase2" | "publish" | "report" | "sync" | "merge")
             ## 停止进程,将停止所有该类型的进程
             killpid $app_type;;
         "all")
@@ -172,6 +184,28 @@ start_busy() {
     return $?;
 }
 
+# 启动二期采集
+start_phase2() {
+    printf "Starting the Phase II acquisition process..\n";
+    
+    # 替换属性文件路径为二期采集配置文件路径
+    config_property=$config_phase2_property
+    
+    ## 二期采集与常规采集只是配置文件不同
+    ## 也可以直接替换配置文件即可
+    start_basic;
+    return $?;
+}
+
+# 启动数据发布服务
+start_publish() {
+    printf "Starting to export and data publishing process..\n";
+    java -Xms256m -Xmx768m -Dtype=${app_type} -DLabel=${app_label} -Dfile.encoding=UTF-8 -Dlogback.configurationFile=./logback.xml \
+          -Dsync.config=conf/export.properties -Djava.ext.dirs=lib -classpath .:. com.cattsoft.collect.io.file.sync.publish.Sync &>/dev/null &
+    processChecks $!;
+    return $?;
+}
+
 # 启动监测报告服务
 start_report() {
     printf "Starting the monitoring report service..\n";
@@ -231,6 +265,10 @@ killpid() {
             printf "Stopping the basis of acquisition process..\n";;
         "daily")
             printf "Stopping the acquisition process when busy..\n";;
+        "phase2")
+            printf "Stopping the Phase II acquisition process..\n";;
+        "publish")
+            printf "Stopping to export and data publishing process..\n";;
         "sync")
             printf "Stopping data synchronization services..\n";;
         "merge")
@@ -312,9 +350,15 @@ case "$2" in
     ## 基础采集
     "basic" | "permanent")
         app_type="permanent";;
+    ## 二期采集
+    "phase2")
+        app_type="phase2";;
     ## 忙时采集
     "busy" | "daily")
         app_type="daily";;
+    ## 数据发布
+    "publish" | "export")
+        app_type="publish";;
     ## 报表服务
     "report" | "gather")
         app_type="report";;
@@ -330,13 +374,21 @@ case "$2" in
         app_type="all";;
     ## 打印帮助
     "help" | "-h" | "-help")
-        printf "Usage:$0 $1 [permanent/daily/report/sync/merge]\n"
+        printf "Usage:$0 $1 [permanent/daily/phase2/publish/report/sync/merge]\n"
+        printf "Legend:\n"
+        printf "  permanent: 常规采集\n"
+        printf "  daily: 忙时采集\n"
+        printf "  phase2: 二期采集\n"
+        printf "  publish: 数据发布服务\n"
+        printf "  report: 监测报表服务\n"
+        printf "  sync: 数据同步服务\n"
+        printf "  merge: 数据合并服务\n"
         # 退出
         exit 1;;
     *)
         if [[ -n $2 ]]; then
             printf "The wrong type of process\n";
-            printf "Usage:$0 $1 [permanent/daily/report/sync/merge]\n";
+            printf "Usage:$0 $1 [permanent/daily/phase2/publish/report/sync/merge]\n";
             exit 1;
         else
             ## 默认为基础采集

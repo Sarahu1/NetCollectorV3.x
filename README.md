@@ -5,6 +5,7 @@
 
 日志
 --------------
+* [3.0.1.b1] 增加数据导出发布服务,通过配置对数据库数据导出后通过FTP发布到各服务器
 * [3.0.0] 发布
 
 
@@ -29,17 +30,16 @@
 更多支持请添加配置更多的命令.
 
 
-### 命令
-
-系统命令
+### 系统命令
 
 1.  dig xxx
 2.  dig xxx +trace
-3.  scamper -c "ping -c 10" -i xxx
-4.  scamper -c "trace -P ICMP -M -l 5" -i xxx
+3.  dig @xxx cn ns  `二期合并`
+4.  dig +norec @xxx HOSTNAME.BIND CHAOS TXT `二期合并`
+5.  scamper -c "ping -c 10" -i xxx
+6.  scamper -c "trace -P ICMP -M -l 5" -i xxx
 
-
-管理
+### 管理
 
 在Linux终端中使用以下命令执行根目录下的`shell.sh`脚本文件,
 启动/停止/重启采集程序:
@@ -62,7 +62,7 @@ report代表监测点状态数据监控服务.
 
 ### 模块
 
-终端采集
+#### 终端采集
 --------------
 * [collector_net_3.0.0.jar]
 
@@ -73,6 +73,7 @@ report代表监测点状态数据监控服务.
    * -- collect_config.xml  `Spring 配置文件`
    * -- `其它all_url.txt/all_ip.txt/daily_ip.txt等数据文件`
    * -- collect_daily.properties  `忙时任务配置`
+   * -- collect_phase2.properties `二期采集配置`
 * [lib] -- `支持库`
    * -- collector_net_3.0.0.jar  `采集模块`
    * -- commons-logging-1.1.1.jar
@@ -89,7 +90,7 @@ report代表监测点状态数据监控服务.
 * -- shell.sh  `管理脚本`
 
 
-文件同步
+#### 文件同步
 --------------
 * [collector_sync_3.0.0.jar]
 
@@ -108,7 +109,7 @@ report代表监测点状态数据监控服务.
 * -- shell.sh  `管理脚本`
 
 
-文件合并
+#### 文件合并
 --------------
 * [collector_merge_3.0.0.jar]
 
@@ -126,14 +127,36 @@ report代表监测点状态数据监控服务.
 * shell.sh -- `管理脚本`
 
 
-智能告警
+#### 智能告警
 --------------
 * [collector_alarm_3.0.0.jar]
 
 目录结构如下
 
 
-终端管理
+#### 数据发布
+--------------
+* [collector_publish_3.0.0.jar]
+
+目录结构如下
+
+* [conf] -- `配置目录`
+   * -- export.properties  `导出配置文件`
+   * -- ftp_server.list  `数据更新服务器列表`
+* [lib] -- `支持库`
+   * -- collector_publish_3.0.0.jar  `数据发布模块`
+   * -- common-configuration-1.8.jar  `属性文件读取`
+   * -- commons-lang-2.6.jar  `Apache 工具包`
+   * -- commons-logging-1.1.1.jar  `日志记录`
+   * -- mail.jar  `邮件通知`
+   * -- ojdbc5.jar  `Oracle数据库驱动`
+   * -- quartz-all-1.8.5.jar  `计划任务包`
+   * -- slf4j-api-1.6.4.jar
+   * -- sunjec_provider.jar
+* shell.sh -- `管理脚本`
+
+
+#### 终端管理
 --------------
 * [collector_manage_3.0.0.jar]
 
@@ -148,8 +171,8 @@ report代表监测点状态数据监控服务.
 
     javaw/java -jar collector_manage_3.0.0.jar
 
-> javaw 启动方式无输出窗口
- java 命令启动方式会出现输出窗口,可用于查看日志
+> javaw 启动方式无输出窗口.
+java 命令启动方式会出现输出窗口,可用于查看日志
 
 
 测试
@@ -164,7 +187,6 @@ report代表监测点状态数据监控服务.
 
 Coming Soon
 --------------
-1. 监测点数据自动更新,由本地服务器每月定时自动下发文件更新
 2. 桌面监测工具增加监测点配置文件修改更新
 3. 桌面监测工具增加监测点进程批量重启/停止功能
 4. **二期采集功能合并**

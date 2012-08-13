@@ -501,6 +501,8 @@ public class SFTPClient extends FTPClient {
 	 * @see com.cattsoft.collect.transfer.ftp.FTP#cwd(java.lang.String)
 	 */
 	public boolean cwd(String directory) throws FTPException {
+		if(null == directory)
+			return false;
 		try {
 			sftp.cd(directory.replaceAll("\\\\", "/"));
 			return true;

@@ -29,7 +29,6 @@ public class JFTPClient extends FTPClient {
 	 */
 	private com.cattsoft.collect.io.net.ftp.ftp4j.FTPClient ftp = null;
 
-
 	/**
 	 * @param hostname 主机地址
 	 * @param port 端口
@@ -151,6 +150,8 @@ public class JFTPClient extends FTPClient {
 	 */
 	@Override
 	public boolean cwd(String directory) throws FTPException {
+		if(null == directory)
+			return false;
 		try {
 			ftp.changeDirectory(directory.replaceAll("\\\\", "/"));
 			return directory.equals(printWorkingDirectory());

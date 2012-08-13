@@ -149,6 +149,7 @@ public class JSch{
   private static final Logger DEVNULL=new Logger(){
       public boolean isEnabled(int level){return false;}
       public void log(int level, String message){}
+      public void log(int level, String message, Exception e) {};
     };
   static Logger logger=DEVNULL;
 
